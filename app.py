@@ -3,6 +3,10 @@ import sys
 import pickle
 import random
 import tempfile
+from collections.abc import Sequence
+from flask import Flask, request, jsonify
+from analyzer.resume_analyzer import analyze_resume
+from tempfile import TemporaryFile
 from flask import Flask, request, render_template
 from werkzeug.utils import secure_filename
 
@@ -11,7 +15,6 @@ sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 from analyzer.resume_parser import extract_text_from_pdf
 from analyzer.resume_analyzer import analyze_resume
 from analyzer.quality_checker import check_resume_quality
-from analyzer.resource_recommender import recommend_resources
 from analyzer.salary_estimator import salary_est
 
 app = Flask(__name__)
@@ -124,6 +127,7 @@ def submit():
     skills_list = [x.strip() for x in skills.split(',') if x.strip()]
 
     return render_template('result.html',
+                           mode="manual",
                            name=name,
                            interests=', '.join(interests_list),
                            skills=', '.join(skills_list),
@@ -139,53 +143,61 @@ def upload():
 @app.route('/resume', methods=['POST'])
 def handle_resume_upload():
     resume = request.files['resume']
-    qualification = request.form.get('qualification', 'Unknown')
 
     if not resume or resume.filename == '':
         return "❌ No resume uploaded", 400
 
-    with tempfile.NamedTemporaryFile(delete=True, suffix=".pdf") as temp_file:
-        resume.save(temp_file.name)  # Save uploaded resume to temp file
-        extracted_text = extract_text_from_pdf(temp_file.name)
+    resume_file = request.files['resume']
+    tmp_file = TemporaryFile()
+    tmp_file.write(resume_file.read())
 
+    # Extract text from PDF
+    extracted_text = extract_text_from_pdf(tmp_file)
+
+    # Analyze resume
     analysis = analyze_resume(extracted_text)
-    skills_found = analysis.get("skills", [])
-    resume_score = analysis.get("score", 60)
 
-    skills_text = ', '.join(skills_found)
-    predictions = predict_career("", skills_text)
+    name = analysis.get("name", "")
+    skills = analysis['skills']
+    skill_matches = analysis.get('skill_matches', [])
+    skill_gaps = analysis['skill_gaps']
+    quality_score = analysis['quality_score']
+    feedback = analysis.get('feedback', analysis.get('quality_feedback', []))
+    qualification = ', '.join(analysis.get('qualifications', []))
+    interests = ""  # You may extract this from resume or form if needed
 
-    top_3_careers = []
-    description_dict = model_package.get('descriptions', {})
-    for career, confidence in predictions:
-        description = description_dict.get(career) or \
-                      description_dict.get(career.lower()) or \
-                      "Description not available for this career."
-        top_3_careers.append({
-            'career': career,
-            'confidence': confidence,
-            'description': description
-        })
+    # For salary prediction, you need a career prediction.
+    # Here, use the analyzed career or fallback to a default.
+    career = analysis.get('career', 'Unknown')
+    skills_text = ', '.join(skills)
 
+    # Predict salary
     salary_value, _ = salary_est.estimate(
         skills=skills_text,
-        career=predictions[0][0],
+        career=career,
         qualification=qualification
     )
     predicted_salary = f"₹{salary_value:,}/year"
 
-    quality_report = check_resume_quality(extracted_text)
-    resume_score = quality_report["score"]
-    quality_tips = quality_report["tips"]
-    resources = recommend_resources(predictions[0][0])
+    # Recommend resources
 
-    return render_template('resume_result.html',
-                           skills=skills_text,
-                           resume_score=resume_score,
-                           predicted_salary=predicted_salary,
-                           quality_feedback=quality_feedback,
-                           resources=resources,
-                           top_3_careers=top_3_careers)
+    # Quality feedback
+    quality_report = check_resume_quality(extracted_text)
+    quality_tips = quality_report["tips"]
+
+    return render_template(
+        'result.html',
+        mode="resume",
+        name=analysis.get('name', 'Not detected'),
+        interests=analysis.get('interests', 'Not detected'),
+        resume_skills=analysis.get('skills', []),           # <-- pass as list
+        skill_gaps=analysis.get('skill_gaps', []),           # <-- pass as list
+        missing_sections=analysis.get('missing_sections', []), # <-- pass as list
+        qualification=', '.join(analysis.get('qualifications', [])),
+        quality_score=analysis.get('quality_score', 0),
+        feedback=analysis.get('feedback', []),
+        predicted_salary=predicted_salary,
+    )
 
 # ===== Run =====
 if __name__ == '__main__':

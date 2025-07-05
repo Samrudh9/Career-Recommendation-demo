@@ -12,6 +12,32 @@
   <h1 class="title">Your Career Recommendations</h1>
   <p class="subtitle fade-in">Based on your skills and interests, we've identified career paths that align with your professional growth goals.</p>
 
+  {% if mode == "resume" %}
+    <h2>Resume Analysis</h2>
+    <table>
+      <tr><th>Name</th><td>{{ name }}</td></tr>
+      <tr><th>Interests</th><td>{{ interests }}</td></tr>
+      <tr><th>Skills</th><td>{{ resume_skills|join(', ') }}</td></tr>
+      <tr><th>Skill Gaps</th><td>{{ skill_gaps|join(', ') }}</td></tr>
+      <tr><th>Missing Sections</th><td>{{ missing_sections|join(', ') }}</td></tr>
+      <tr><th>Feedback</th>
+        <td>
+          <ul>
+            {% for tip in feedback %}
+              <li>{{ tip }}</li>
+            {% endfor %}
+          </ul>
+        </td>
+      </tr>
+      <tr><th>Quality Score</th><td>{{ quality_score }}/100</td></tr>
+    </table>
+    <p><b>Predicted Salary:</b> {{ predicted_salary }}</p>
+    <h4>📘 Recommended Resources</h4>
+    <ul>{% for link in yt_links %}<li><a href="{{ link }}">{{ link }}</a></li>{% endfor %}</ul>
+    <ul>{% for link in book_links %}<li>{{ link }}</li>{% endfor %}</ul>
+   
+{% endif %}
+
   {% for item in top_3_careers %}
   <div class="glass-card">
     <h2>{{ item.career }}</h2>
@@ -19,13 +45,13 @@
     <p><span class="info-label">Description:</span> {{ item.description }}</p>
     <a href="https://in.indeed.com/jobs?q={{ item.career | urlencode }}" target="_blank" class="button">Explore Opportunities</a>
   </div>
-  {% endfor %}
+  
 
   <div class="glass-card">
     <p><span class="info-label">Name:</span> {{ name }}</p>
     <p><span class="info-label">Interests:</span> {{ interests }}</p>
     <p><span class="info-label">Skills:</span> {{ skills }}</p>
   </div>
-
+  {% endfor %}
 </body>
 </html>
