@@ -1,0 +1,351 @@
+resume_text,career_label
+"
+                Skills: python django flask api rest microservices java spring boot node.js express postgresql mysql mongodb docker aws
+                
+                Education: self-taught programmer
+                
+                Experience: 3 years experience building applications
+                ",Backend Developer
+"
+                Skills: java spring hibernate microservices restful apis jpa mysql oracle docker kubernetes jenkins
+                
+                Education: bachelors in computer science
+                
+                Experience: 2 years experience in development
+                ",Backend Developer
+"
+                Skills: node.js express typescript mongodb rest graphql docker aws serverless microservices
+                
+                Education: bachelors in information technology
+                
+                Experience: 3 years experience building applications
+                ",Backend Developer
+"
+                Skills: python fastapi django postgresql redis celery docker aws lambda microservices
+                
+                Education: self-taught programmer
+                
+                Experience: worked on multiple projects for enterprise clients
+                ",Backend Developer
+"
+                Skills: c# .net core entity framework sql server rest apis azure devops microservices
+                
+                Education: self-taught programmer
+                
+                Experience: 5 years experience in technology industry
+                ",Backend Developer
+"
+                Skills: react redux javascript typescript html css webpack jest tailwind responsive
+                
+                Education: masters in computer science
+                
+                Experience: 3 years experience building applications
+                ",Frontend Developer
+"
+                Skills: angular typescript rxjs ngrx material design sass bootstrap responsive testing
+                
+                Education: bachelors in engineering
+                
+                Experience: 3 years experience building applications
+                ",Frontend Developer
+"
+                Skills: vue.js vuex javascript sass webpack responsive design cross-browser accessibility
+                
+                Education: self-taught programmer
+                
+                Experience: internship at tech company developing software
+                ",Frontend Developer
+"
+                Skills: react next.js typescript styled-components redux material-ui responsive design accessibility
+                
+                Education: bachelors in engineering
+                
+                Experience: recent graduate with internship experience
+                ",Frontend Developer
+"
+                Skills: javascript html css sass responsive design bootstrap jquery cross-browser testing
+                
+                Education: masters in computer science
+                
+                Experience: 3 years experience building applications
+                ",Frontend Developer
+"
+                Skills: python r pandas numpy scikit-learn tensorflow keras statistics machine learning
+                
+                Education: phd in computer science
+                
+                Experience: senior level position with team management
+                ",Data Scientist
+"
+                Skills: python jupyter pytorch pandas numpy matplotlib data visualization nlp computer vision
+                
+                Education: phd in computer science
+                
+                Experience: 5 years experience in technology industry
+                ",Data Scientist
+"
+                Skills: r statistics regression clustering hypothesis testing data visualization tableau
+                
+                Education: diploma in computer science
+                
+                Experience: internship at tech company developing software
+                ",Data Scientist
+"
+                Skills: python sql data analysis machine learning big data spark hadoop tableau
+                
+                Education: self-taught programmer
+                
+                Experience: 2 years experience in development
+                ",Data Scientist
+"
+                Skills: python tensorflow deep learning neural networks nlp statistics research
+                
+                Education: self-taught programmer
+                
+                Experience: internship at tech company developing software
+                ",Data Scientist
+"
+                Skills: agile scrum jira project management pmp stakeholder communication budget planning
+                
+                Education: masters in computer science
+                
+                Experience: 3 years experience building applications
+                ",Project Manager
+"
+                Skills: kanban project planning resource allocation risk management client communication
+                
+                Education: diploma in computer science
+                
+                Experience: 2 years experience in development
+                ",Project Manager
+"
+                Skills: waterfall sdlc project coordination timeline management stakeholder reporting
+                
+                Education: masters in information technology
+                
+                Experience: recent graduate with internship experience
+                ",Project Manager
+"
+                Skills: prince2 project management resource planning team leadership reporting
+                
+                Education: phd in computer science
+                
+                Experience: internship at tech company developing software
+                ",Project Manager
+"
+                Skills: agile project management team leadership jira confluence requirements gathering
+                
+                Education: self-taught programmer
+                
+                Experience: internship at tech company developing software
+                ",Project Manager
+"
+                Skills: android kotlin java xml firebase gradle retrofit room architecture components
+                
+                Education: bachelors in information technology
+                
+                Experience: 3 years experience building applications
+                ",Mobile App Developer
+"
+                Skills: ios swift swiftui xcode core data firebase cocoapods uikit arkit
+                
+                Education: masters in computer science
+                
+                Experience: recent graduate with internship experience
+                ",Mobile App Developer
+"
+                Skills: react native javascript redux expo firebase cross-platform mobile development
+                
+                Education: phd in computer science
+                
+                Experience: internship at tech company developing software
+                ",Mobile App Developer
+"
+                Skills: flutter dart firebase state management cross-platform ui material design
+                
+                Education: bachelors in information technology
+                
+                Experience: freelance developer for 4 years
+                ",Mobile App Developer
+"
+                Skills: swift objective-c ios uikit core data push notifications in-app purchases
+                
+                Education: bachelors in information technology
+                
+                Experience: senior level position with team management
+                ",Mobile App Developer
+"
+                Skills: kubernetes docker aws terraform jenkins ci/cd github actions monitoring
+                
+                Education: self-taught programmer
+                
+                Experience: 3 years experience building applications
+                ",DevOps Engineer
+"
+                Skills: ansible jenkins docker kubernetes aws infrastructure as code monitoring
+                
+                Education: masters in information technology
+                
+                Experience: 5 years experience in technology industry
+                ",DevOps Engineer
+"
+                Skills: ci/cd pipelines aws cloud formation kubernetes docker prometheus grafana
+                
+                Education: masters in computer science
+                
+                Experience: worked on multiple projects for enterprise clients
+                ",DevOps Engineer
+"
+                Skills: azure devops terraform docker kubernetes monitoring automation scripting
+                
+                Education: bachelors in computer science
+                
+                Experience: senior level position with team management
+                ",DevOps Engineer
+"
+                Skills: gcp kubernetes terraform helm docker ci/cd observability logging
+                
+                Education: bachelors in information technology
+                
+                Experience: 5 years experience in technology industry
+                ",DevOps Engineer
+"
+                Skills: figma sketch user research wireframing prototyping usability testing
+                
+                Education: phd in computer science
+                
+                Experience: 3 years experience building applications
+                ",UI/UX Designer
+"
+                Skills: adobe xd photoshop illustrator user flows ui design system accessibility
+                
+                Education: masters in computer science
+                
+                Experience: senior level position with team management
+                ",UI/UX Designer
+"
+                Skills: user research personas information architecture wireframing interaction design
+                
+                Education: phd in computer science
+                
+                Experience: internship at tech company developing software
+                ",UI/UX Designer
+"
+                Skills: figma design systems prototyping user testing accessibility responsive design
+                
+                Education: masters in computer science
+                
+                Experience: 3 years experience building applications
+                ",UI/UX Designer
+"
+                Skills: sketch invision prototyping interaction design usability testing research
+                
+                Education: phd in computer science
+                
+                Experience: 2 years experience in development
+                ",UI/UX Designer
+"
+                Skills: java spring boot microservices object-oriented design patterns testing
+                
+                Education: masters in computer science
+                
+                Experience: freelance developer for 4 years
+                ",Software Engineer
+"
+                Skills: python django rest apis object-oriented testing docker aws
+                
+                Education: self-taught programmer
+                
+                Experience: worked on multiple projects for enterprise clients
+                ",Software Engineer
+"
+                Skills: c++ algorithms data structures performance optimization multithreading
+                
+                Education: self-taught programmer
+                
+                Experience: 2 years experience in development
+                ",Software Engineer
+"
+                Skills: javascript typescript node.js express react full-stack development
+                
+                Education: self-taught programmer
+                
+                Experience: 3 years experience building applications
+                ",Software Engineer
+"
+                Skills: c# .net core asp.net entity framework sql server azure
+                
+                Education: self-taught programmer
+                
+                Experience: 2 years experience in development
+                ",Software Engineer
+"
+                Skills: sql server database administration backup recovery performance tuning security
+                
+                Education: bachelors in information technology
+                
+                Experience: worked on multiple projects for enterprise clients
+                ",Database Administrator
+"
+                Skills: oracle database administration performance tuning pl/sql backup recovery
+                
+                Education: bachelors in engineering
+                
+                Experience: recent graduate with internship experience
+                ",Database Administrator
+"
+                Skills: mysql database administration replication backup performance optimization
+                
+                Education: masters in information technology
+                
+                Experience: 3 years experience building applications
+                ",Database Administrator
+"
+                Skills: postgresql database administration backup recovery performance tuning
+                
+                Education: bachelors in information technology
+                
+                Experience: freelance developer for 4 years
+                ",Database Administrator
+"
+                Skills: mongodb database administration sharding replication security performance
+                
+                Education: self-taught programmer
+                
+                Experience: 2 years experience in development
+                ",Database Administrator
+"
+                Skills: cisco networking routing switching firewalls vpn security protocols
+                
+                Education: phd in computer science
+                
+                Experience: 2 years experience in development
+                ",Network Engineer
+"
+                Skills: network security firewalls vpn intrusion detection system penetration testing
+                
+                Education: bachelors in engineering
+                
+                Experience: 3 years experience building applications
+                ",Network Engineer
+"
+                Skills: network design implementation troubleshooting cisco juniper routing switching
+                
+                Education: diploma in computer science
+                
+                Experience: 5 years experience in technology industry
+                ",Network Engineer
+"
+                Skills: sdwan network virtualization routing protocols monitoring troubleshooting
+                
+                Education: self-taught programmer
+                
+                Experience: freelance developer for 4 years
+                ",Network Engineer
+"
+                Skills: network infrastructure design implementation maintenance security
+                
+                Education: diploma in computer science
+                
+                Experience: 5 years experience in technology industry
+                ",Network Engineer

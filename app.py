@@ -161,6 +161,9 @@ def handle_resume_upload():
     skills_text = ", ".join(analysis.get('skills', []))
     career = analysis.get('career', "Software Developer")  # Default if no career detected
     
+    # Get career matches for top 3 recommendations
+    career_matches = analysis.get('career_matches', [])
+    
     # Fix qualification format - convert from list to string
     qualifications = analysis.get('qualifications', ['Bachelors'])
     qualification = qualifications[0] if qualifications else 'Bachelors'  # Take first or default
@@ -213,7 +216,25 @@ def handle_resume_upload():
         predicted_salary=predicted_salary,
         yt_links=yt_links,
         book_links=book_links,
+        top_3_careers=career_matches,  # Pass career matches for display
     )
+
+# ===== Feature Disabled =====
+@app.route('/multi-upload')
+def multi_upload():
+    # Redirect to single resume upload with a message
+    from flask import redirect, url_for, flash
+    # Use flash if available, otherwise redirect to regular upload
+    try:
+        flash("Multiple resume analysis is currently disabled. Please upload one resume at a time.", "info")
+        return redirect(url_for('upload'))
+    except:
+        return redirect('/upload')
+
+@app.route('/multi-resume', methods=['POST'])
+def handle_multi_resume_upload():
+    # Return clear message that feature is disabled
+    return "Multi-resume analysis is currently disabled. Please use the single resume upload feature instead.", 400
 
 # ===== Run =====
 if __name__ == '__main__':

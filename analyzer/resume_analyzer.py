@@ -3,6 +3,7 @@ import pandas as pd
 import os
 from .quality_checker import check_resume_quality
 from .ml_resume_parser import MLResumeParser
+from .ml_resume_classifier import resume_classifier
 
 # Replace absolute Windows paths with relative paths
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -22,17 +23,88 @@ def extract_name(text):
 
 def extract_name_and_contact(text):
     """Extract name and contact info."""
-    name = extract_name(text)
+    # Better name extraction - look for name patterns
+    lines = text.split('\n')
+    name = "Not detected"
     
-    # Extract email
-    email_match = re.search(r'[\w\.-]+@[\w\.-]+\.\w+', text)
-    email = email_match.group(0) if email_match else ""
+    # Try to find name in first few lines
+    for i, line in enumerate(lines[:5]):
+        line = line.strip()
+        if line and not any(keyword in line.lower() for keyword in ['email', 'phone', 'address', 'linkedin', 'github', 'objective', 'summary']):
+            # Check if it looks like a name (2-4 words, mostly alphabetic)
+            words = line.split()
+            if 2 <= len(words) <= 4 and all(word.replace('.', '').isalpha() for word in words):
+                name = line
+                break
     
-    # Extract phone
-    phone_match = re.search(r'\b(?:\+\d{1,3}[-\s])?\d{10,15}\b', text)
-    phone = phone_match.group(0) if phone_match else ""
+    # Extract email with better patterns
+    email_patterns = [
+        r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
+        r'Email[:\s]*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})',
+        r'E-mail[:\s]*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})'
+    ]
     
-    contact = {"email": email, "phone": phone}
+    email = ""
+    for pattern in email_patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            email = match.group(1) if match.groups() else match.group(0)
+            break
+    
+    # Extract phone with better patterns
+    phone_patterns = [
+        r'Phone[:\s]*(\+?\d{1,3}[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})',
+        r'Mobile[:\s]*(\+?\d{1,3}[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})',
+        r'(\+?\d{1,3}[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4})'
+    ]
+    
+    phone = ""
+    for pattern in phone_patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            phone = match.group(1) if match.groups() else match.group(0)
+            break
+    
+    # Extract LinkedIn
+    linkedin_patterns = [
+        r'linkedin\.com/in/[\w-]+',
+        r'LinkedIn[:\s]*(linkedin\.com/in/[\w-]+)',
+        r'(https?://)?(?:www\.)?linkedin\.com/in/([\w-]+)'
+    ]
+    
+    linkedin = ""
+    for pattern in linkedin_patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            if 'linkedin.com' in match.group(0):
+                linkedin = match.group(0) if not match.group(0).startswith('http') else match.group(0)
+                if not linkedin.startswith('http'):
+                    linkedin = 'https://' + linkedin
+            break
+    
+    # Extract GitHub
+    github_patterns = [
+        r'github\.com/[\w-]+',
+        r'GitHub[:\s]*(github\.com/[\w-]+)',
+        r'(https?://)?(?:www\.)?github\.com/([\w-]+)'
+    ]
+    
+    github = ""
+    for pattern in github_patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            if 'github.com' in match.group(0):
+                github = match.group(0) if not match.group(0).startswith('http') else match.group(0)
+                if not github.startswith('http'):
+                    github = 'https://' + github
+            break
+    
+    contact = {
+        "email": email,
+        "phone": phone,
+        "linkedin": linkedin,
+        "github": github
+    }
     return name, contact
 
 def extract_section(text, section):
@@ -145,6 +217,15 @@ def predict_career_from_skills(skills):
         return top_career[0] if top_career[1] > 20 else None  # Return only if >20% match
     
     return None
+    
+def predict_career_from_resume(text):
+    """Predict the career using the ML model"""
+    try:
+        career, top_careers = resume_classifier.predict_career(text, return_probabilities=True)
+        return career, top_careers
+    except Exception as e:
+        print(f"Error predicting career from resume: {e}")
+        return None, []
 
 def generate_improvement_feedback(text, skills, experience, education, projects):
     feedback = []
@@ -215,9 +296,33 @@ def analyze_resume(text, target_career=None):
     if not all_skills:
         all_skills = extract_skills(text)
     
-    # Auto-detect career if not provided
+    # Auto-detect career using both approaches
     if not target_career:
-        target_career = predict_career_from_skills(all_skills)
+        # Use ML classifier first
+        career_ml, top_careers = predict_career_from_resume(text)
+        # Fallback to skill-based prediction if ML fails
+        if not career_ml:
+            target_career = predict_career_from_skills(all_skills)
+            top_careers = []
+        else:
+            target_career = career_ml
+    else:
+        # If target career provided, still get top matches
+        _, top_careers = predict_career_from_resume(text)
+    
+    # Set a default career if prediction returns None or a non-string
+    if not target_career or not isinstance(target_career, str):
+        target_career = "Software Engineer"  # Default
+    
+    # Create career match objects with descriptions
+    career_matches = []
+    for career_name, confidence in top_careers:
+        description = resume_classifier.get_career_description(career_name)
+        career_matches.append({
+            "career": career_name,
+            "confidence": confidence,
+            "description": description
+        })
         
     technical_skills = ", ".join(all_skills)
     certificates = parsed_data.get("certificates", "")
@@ -281,4 +386,5 @@ def analyze_resume(text, target_career=None):
         "skill_data": skill_data,
         "interests": interests,
         "career": target_career,
+        "career_matches": career_matches,
     }

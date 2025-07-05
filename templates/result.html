@@ -6,12 +6,171 @@
   <title>Resume Analysis</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/css/style.css" />
+  <style>
+    /* Additional styles for career matches */
+    .career-matches-container {
+      margin-top: 30px;
+      margin-bottom: 40px;
+    }
+    
+    .career-matches-header {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+    
+    .career-matches-header h2 {
+      font-size: 28px;
+      background: linear-gradient(90deg, #00c2ff, #00ffe0);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 10px;
+    }
+    
+    .career-matches-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    
+    .career-match-card {
+      background: #1a1b22;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .career-match-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 12px 30px rgba(0, 194, 255, 0.2);
+    }
+    
+    .career-match-card h3 {
+      color: #00c2ff;
+      font-size: 22px;
+      margin-top: 0;
+      margin-bottom: 15px;
+      border-bottom: 1px solid rgba(0, 194, 255, 0.3);
+      padding-bottom: 10px;
+    }
+    
+    .confidence-bar {
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      margin: 15px 0;
+      overflow: hidden;
+    }
+    
+    .confidence-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #00c2ff, #00ffe0);
+      border-radius: 4px;
+    }
+    
+    .confidence-text {
+      font-weight: 600;
+      color: #00ffe0;
+      margin-bottom: 15px;
+    }
+    
+    .career-description {
+      margin-top: 15px;
+      line-height: 1.6;
+      color: #d0d0d0;
+    }
+    
+    .explore-button {
+      display: inline-block;
+      background: linear-gradient(90deg, #00c2ff, #00ffe0);
+      color: #111;
+      font-weight: 600;
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+      transition: transform 0.2s ease;
+    }
+    
+    .explore-button:hover {
+      transform: scale(1.05);
+    }
+    
+    .section {
+      background: #b2b3b6;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 25px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .section h3 {
+      margin-top: 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 10px;
+      margin-bottom: 15px;
+      color: #00c2ff;
+    }
+    
+    .skill-gap {
+      background: rgba(255, 165, 0, 0.2);
+      color: orange;
+      border: 1px solid rgba(255, 165, 0, 0.3);
+      padding: 5px 10px;
+      margin: 5px;
+      display: inline-block;
+      border-radius: 4px;
+    }
+    
+    .skill-category-title {
+      font-weight: 600;
+      color: #00c2ff;
+    }
+    
+    .resume-review {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    .salary-amount {
+      font-size: 24px;
+      font-weight: 600;
+      color: #00ffaa;
+    }
+  </style>
 </head>
 <body>
   {% if mode == "resume" %}
     <div class="resume-review">
       <h1>Resume Analysis</h1>
       
+      <!-- Career Matches Section - Prominently displayed at the top -->
+      <div class="career-matches-container">
+        <div class="career-matches-header">
+          <h2>Recommended Career Paths</h2>
+          <p>Based on your skills, experience, and qualifications</p>
+        </div>
+        
+        <div class="career-matches-grid">
+          {% for item in top_3_careers %}
+            <div class="career-match-card">
+              <h3>{{ item.career }}</h3>
+              <div class="confidence-text">{{ item.confidence }}% Match</div>
+              <div class="confidence-bar">
+                <div class="confidence-fill" style="width: {{ item.confidence }}%"></div>
+              </div>
+              <div class="career-description">{{ item.description }}</div>
+              <a href="https://in.indeed.com/jobs?q={{ item.career | urlencode }}" target="_blank" class="explore-button">Explore Opportunities</a>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+      
+      <!-- Rest of the content -->
       <div class="section">
         <p><b>Name:</b> {{ name }}</p>
         <p><b>Contact:</b> 
@@ -135,14 +294,5 @@
       {% endif %}
     </div>
   {% endif %}
-
-  {% for item in top_3_careers %}
-    <div class="glass-card">
-      <h2>{{ item.career }}</h2>
-      <p><span class="info-label">Confidence:</span> {{ item.confidence }}%</p>
-      <p><span class="info-label">Description:</span> {{ item.description }}</p>
-      <a href="https://in.indeed.com/jobs?q={{ item.career | urlencode }}" target="_blank" class="button">Explore Opportunities</a>
-    </div>
-  {% endfor %}
 </body>
 </html>
