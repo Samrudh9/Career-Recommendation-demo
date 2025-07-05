@@ -48,3 +48,56 @@ class MLResumeParser:
         contact["github"] = re.findall(github_pattern, text)
         
         return {k: v[0] if v else "" for k, v in contact.items()}
+        
+    def _extract_section_content(self, section_doc):
+        """Extract content from a section until the next section header"""
+        text = section_doc.text
+        
+        # Look for next section header pattern
+        next_section_match = re.search(r'\n[A-Z][A-Za-z\s]+:', text)
+        if next_section_match:
+            # Return text until the next section header
+            return text[:next_section_match.start()].strip()
+        
+        # If no next section, return all text
+        return text.strip()
+    
+    def _extract_skills(self, text):
+        """Extract skills from the resume text"""
+        # Define common skills to look for
+        common_skills = [
+            "python", "java", "javascript", "html", "css", "react", "angular", "node.js",
+            "sql", "mongodb", "mysql", "postgresql", "git", "docker", "kubernetes",
+            "aws", "azure", "gcp", "machine learning", "deep learning", "tensorflow",
+            "pytorch", "nlp", "data analysis", "data science", "c++", "c#", "go",
+            "rust", "php", "ruby", "swift", "kotlin", "flutter", "react native"
+        ]
+        
+        # Find skills in text
+        found_skills = []
+        text_lower = text.lower()
+        
+        for skill in common_skills:
+            if re.search(r'\b' + re.escape(skill) + r'\b', text_lower):
+                found_skills.append(skill)
+                
+        return found_skills
+    
+    def _extract_projects(self, text):
+        """Extract project information from resume"""
+        # Look for project section
+        project_section = ""
+        
+        # Pattern to find project section
+        project_patterns = [
+            r'(?:PROJECTS|PROJECT|PERSONAL PROJECTS).*?(?=\n[A-Z][A-Za-z\s]+:|$)',
+            r'(?:PROJECTS|PROJECT|PERSONAL PROJECTS).*?(?=\n\n|$)'
+        ]
+        
+        for pattern in project_patterns:
+            match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+            if match:
+                project_section = match.group(0)
+                break
+        
+        return project_section.strip()

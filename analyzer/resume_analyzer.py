@@ -94,73 +94,40 @@ def analyze_resume(text, target_career=None):
     parsed_data = parser.parse_resume(text)
     
     # Extract data using ML
-    name = parsed_data.get("name", "")
+    name = parsed_data.get("name", "") or extract_name(text)
     contact = parsed_data.get("contact", {})
     education = parsed_data.get("education", "")
     experience = parsed_data.get("experience", "")
-    skills = parsed_data.get("skills", [])
+    skills = parsed_data.get("skills", []) or extract_skills(text)
     certificates = parsed_data.get("certificates", "")
     projects = parsed_data.get("projects", "")
+    technical_skills = ", ".join(skills)
+    references = extract_section(text, "References")
+    qualifications = extract_qualification(text)
     
-    # Get career recommendations
-    career_matches = get_career_matches(skills)
+    # Fallback for name if ML parser didn't find it
+    if not name:
+        name, _ = extract_name_and_contact(text)
     
-    # Generate improvements
-    improvements = generate_improvements(parsed_data)
-    
-    return {
-        "name": name,
-        "contact": contact,
-        "education": education,
-        "experience": experience,
-        "skills": skills,
-        "certificates": certificates,
-        "projects": projects,
-        "improvements": improvements,
-        "career_matches": career_matches
-    }
-
-    # Predict or select career
-    if not target_career:
-        best_match = None
-        max_overlap = 0
-        for _, row in career_skill_df.iterrows():
-            skill_cell = row['Skill']
-            if not isinstance(skill_cell, str):
-                continue
-            required = [s.strip().lower() for s in skill_cell.split(',')]
-            overlap = len(set(technical_skills.split(',')) & set(required))
-            if overlap > max_overlap:
-                max_overlap = overlap
-                best_match = row
-        target_career = best_match['Career'] if best_match is not None else None
-
-    if not target_career:
-        # fallback or warning
-        required_skills = []
-    else:
-        required_skills = get_career_required_skills(target_career)
-
     # Required skills for the target career
-    required_skills = get_career_required_skills(target_career)  # from your CSV
-    resume_skills = extract_skills(text)  # from the resume
-
-    skill_gaps = [s for s in required_skills if s not in resume_skills]
-    skill_matches = list(set(resume_skills) & set(required_skills))
-
+    required_skills = get_career_required_skills(target_career)
+    skill_gaps = [s for s in required_skills if s.lower() not in [sk.lower() for sk in skills]]
+    
     # Extra: Check for modern tech gaps
     cloud_skills = {"aws", "azure", "gcp", "docker", "kubernetes"}
     testing_skills = {"jest", "mocha", "pytest", "unittest"}
     uiux_skills = {"figma", "adobe xd", "sketch"}
-    missing_cloud = [s for s in cloud_skills if s not in resume_skills]
-    missing_testing = [s for s in testing_skills if s not in resume_skills]
-    missing_uiux = [s for s in uiux_skills if s not in resume_skills]
-
+    missing_cloud = [s for s in cloud_skills if s not in [sk.lower() for sk in skills]]
+    missing_testing = [s for s in testing_skills if s not in [sk.lower() for sk in skills]]
+    missing_uiux = [s for s in uiux_skills if s not in [sk.lower() for sk in skills]]
+    
     # Section presence checks
     text_lower = text.lower()
     has_skills_section = any(re.search(r'\bskills?\b', line) for line in text.split('\n'))
     has_projects_section = any(re.search(r'\bprojects?\b', line) for line in text.split('\n'))
     missing_sections = []
+    
+    # Generate missing sections list
     if not has_skills_section:
         missing_sections.append("Skills")
     if not has_projects_section:
@@ -177,14 +144,14 @@ def analyze_resume(text, target_career=None):
         missing_sections.append("Testing")
     if missing_uiux:
         missing_sections.append("UI/UX Tools")
-
+    
     # Human-like feedback
     feedback = []
     if not any(x in text_lower for x in ["objective", "summary"]):
         feedback.append("Add a brief Objective or Summary at the top to quickly communicate your career goals.")
-    if "javascript" not in resume_skills:
+    if "javascript" not in [s.lower() for s in skills]:
         feedback.append("List JavaScript explicitly in your technical skills if you have experience.")
-    if "typescript" not in resume_skills:
+    if "typescript" not in [s.lower() for s in skills]:
         feedback.append("Add TypeScript if you have experience or plan to work with modern JS frameworks.")
     if missing_cloud:
         feedback.append("Consider learning or mentioning Cloud/DevOps tools (e.g., AWS, Docker, Kubernetes).")
@@ -196,13 +163,10 @@ def analyze_resume(text, target_career=None):
         feedback.append("Include extracurricular activities or volunteer work if relevant.")
     feedback.append("Quantify your achievements (e.g., 'Developed a web app used by 500+ users').")
     feedback.append("Use consistent formatting and section headings for a professional look.")
-
+    
     # Quality score
     quality_report = check_resume_quality(text)
-
-    print("missing_sections type:", type(missing_sections), missing_sections)
-    print("skill_gaps type:", type(skill_gaps), skill_gaps)
-
+    
     return {
         "name": name,
         "contact": contact,
@@ -217,6 +181,6 @@ def analyze_resume(text, target_career=None):
         "improvements": feedback,
         "quality_score": quality_report["score"],
         "qualifications": qualifications,
-        "skills": skills,  # Now skills is defined
+        "skills": skills,
         "career": target_career,
     }
