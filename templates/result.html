@@ -3,41 +3,67 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Your AI Career Path</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700&display=swap" rel="stylesheet" />
+  <title>Resume Analysis</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/css/style.css" />
 </head>
 <body>
-
-  <h1 class="title">Your Career Recommendations</h1>
-  <p class="subtitle fade-in">Based on your skills and interests, we've identified career paths that align with your professional growth goals.</p>
-
   {% if mode == "resume" %}
     <div class="resume-review">
-      <h2>Resume Analysis</h2>
+      <h1>Resume Analysis</h1>
+      
       <div class="section">
         <p><b>Name:</b> {{ name }}</p>
-        <p><b>Contact:</b>
-          {% if contact.email %} Email: {{ contact.email }} {% endif %}
-          {% if contact.phone %} | Phone: {{ contact.phone }} {% endif %}
-          {% if contact.linkedin %} | LinkedIn: {{ contact.linkedin }} {% endif %}
-          {% if contact.github %} | GitHub: {{ contact.github }} {% endif %}
+        <p><b>Contact:</b> 
+          {% if contact.email %}Email: {{ contact.email }}{% endif %}
+          {% if contact.phone %} | Phone: {{ contact.phone }}{% endif %}
+          {% if contact.skype %} | Skype: {{ contact.skype }}{% endif %}
+          {% if contact.linkedin %} | <a href="{{ contact.linkedin }}">LinkedIn</a>{% endif %}
+          {% if contact.github %} | <a href="{{ contact.github }}">GitHub</a>{% endif %}
         </p>
-        {% if interests != "Not detected" %}
-          <p><b>Interests:</b> {{ interests }}</p>
-        {% endif %}
       </div>
       
-      <!-- Salary Estimation Section -->
-      <div class="section salary-section">
-        <h3>Estimated Salary</h3>
-        <p class="salary-amount">{{ predicted_salary }}</p>
-        <p>Based on your skills, experience, and current market trends</p>
-      </div>
-
       <div class="section">
         <h3>Education</h3>
         <pre>{{ education }}</pre>
+      </div>
+      
+      <div class="section">
+        <h3>Technical Skills and Interests</h3>
+        {% if skill_data %}
+          {% if skill_data.languages %}
+            <p class="skill-category">
+              <span class="skill-category-title">Languages:</span> {{ skill_data.languages|join(", ") }}
+            </p>
+          {% endif %}
+          {% if skill_data.tools %}
+            <p class="skill-category">
+              <span class="skill-category-title">Developer Tools:</span> {{ skill_data.tools|join(", ") }}
+            </p>
+          {% endif %}
+          {% if skill_data.frameworks %}
+            <p class="skill-category">
+              <span class="skill-category-title">Frameworks:</span> {{ skill_data.frameworks|join(", ") }}
+            </p>
+          {% endif %}
+          {% if skill_data.databases %}
+            <p class="skill-category">
+              <span class="skill-category-title">Databases:</span> {{ skill_data.databases|join(", ") }}
+            </p>
+          {% endif %}
+          {% if skill_data.soft_skills %}
+            <p class="skill-category">
+              <span class="skill-category-title">Soft Skills:</span> {{ skill_data.soft_skills|join(", ") }}
+            </p>
+          {% endif %}
+        {% else %}
+          <pre>{{ technical_skills }}</pre>
+        {% endif %}
+      </div>
+      
+      <div class="section">
+        <h3>Experience</h3>
+        <pre>{{ experience }}</pre>
       </div>
       
       {% if certificates %}
@@ -48,19 +74,13 @@
       {% endif %}
       
       <div class="section">
-        <h3>Experience</h3>
-        <pre>{{ experience }}</pre>
-      </div>
-      
-      <div class="section">
-        <h3>Technical Skills</h3>
-        <pre>{{ technical_skills }}</pre>
+        <h3>Projects</h3>
+        <pre>{{ projects }}</pre>
       </div>
       
       {% if skill_gaps %}
       <div class="section">
         <h3>Skill Gaps</h3>
-        <p>Consider developing these in-demand skills:</p>
         <div>
           {% for skill in skill_gaps %}
             <span class="skill-gap">{{ skill }}</span>
@@ -70,8 +90,13 @@
       {% endif %}
       
       <div class="section">
-        <h3>Projects</h3>
-        <pre>{{ projects }}</pre>
+        <h3>Quality Feedback</h3>
+        <ul>
+          {% for tip in improvements %}
+            <li>{{ tip }}</li>
+          {% endfor %}
+        </ul>
+        <p><b>Quality Score:</b> {{ quality_score }}/100</p>
       </div>
       
       <div class="section">
@@ -79,31 +104,16 @@
         <pre>{{ references }}</pre>
       </div>
       
-      <div class="section">
-        <h3>Improvements & Suggestions</h3>
-        {% if feedback %}
-          <ul>
-            {% for tip in feedback %}
-              <li>{{ tip }}</li>
-            {% endfor %}
-          </ul>
-        {% else %}
-          <p>Your resume looks great! Here are some general tips:</p>
-          <ul>
-            <li>Quantify your achievements where possible</li>
-            <li>Keep your resume updated with recent projects</li>
-            <li>Tailor your resume for specific job applications</li>
-          </ul>
-        {% endif %}
-      </div>
-      
-      <div class="section">
-        <p><b>Quality Score:</b> {{ quality_score }}/100</p>
+      <!-- Salary Estimation Section -->
+      <div class="section salary-section">
+        <h3>Estimated Salary</h3>
+        <p class="salary-amount">{{ predicted_salary }}</p>
+        <p>Based on your skills, experience, and current market trends</p>
       </div>
       
       {% if yt_links or book_links %}
       <div class="section">
-        <h3>📘 Recommended Resources</h3>
+        <h3>Recommended Resources</h3>
         {% if yt_links %}
           <h4>Video Tutorials</h4>
           <ul>
@@ -134,13 +144,5 @@
       <a href="https://in.indeed.com/jobs?q={{ item.career | urlencode }}" target="_blank" class="button">Explore Opportunities</a>
     </div>
   {% endfor %}
-  
-  {% if mode == "manual" %}
-    <div class="glass-card">
-      <p><span class="info-label">Name:</span> {{ name }}</p>
-      <p><span class="info-label">Interests:</span> {{ interests }}</p>
-      <p><span class="info-label">Skills:</span> {{ skills }}</p>
-    </div>
-  {% endif %}
 </body>
 </html>

@@ -151,19 +151,17 @@ def handle_resume_upload():
     tmp_file = TemporaryFile()
     tmp_file.write(resume_file.read())
 
-    # Extract text from PDF
+    # Extract text from the uploaded resume
     extracted_text = extract_text_from_pdf(tmp_file)
-
-    # Analyze resume
+    
+    # Extract skills from resume text
     analysis = analyze_resume(extracted_text)
-    quality_report = check_resume_quality(extracted_text)
-    quality_tips = quality_report["tips"]
-
-    # Prepare data for salary prediction
-    skills_text = ', '.join(analysis.get('skills', []))
-    career = analysis.get('career', '')
-    qualification = ', '.join(analysis.get('qualifications', []))
-
+    
+    # Get detected skills and predicted career
+    skills_text = ", ".join(analysis.get('skills', []))
+    career = analysis.get('career', "Software Developer")  # Default if no career detected
+    qualification = analysis.get('qualifications', ['Bachelors'])
+    
     # Predict salary
     salary_value, _ = salary_est.estimate(
         skills=skills_text,
@@ -172,16 +170,18 @@ def handle_resume_upload():
     )
     predicted_salary = f"₹{salary_value:,}/year"
 
+    skill_gaps = analysis.get('skill_gaps', [])
+    
     # Add resource recommendations
     yt_links = [
         f"https://www.youtube.com/results?search_query={skill}+tutorial" 
-        for skill in analysis.get('skill_gaps', [])[:3]
-    ] if analysis.get('skill_gaps') else []
+        for skill in skill_gaps[:3]
+    ] if skill_gaps else []
     
     book_links = [
         f"Learn {skill.capitalize()}: The Complete Guide" 
-        for skill in analysis.get('skill_gaps', [])[:3]
-    ] if analysis.get('skill_gaps') else []
+        for skill in skill_gaps[:3]
+    ] if skill_gaps else []
 
     return render_template(
         'result.html',
@@ -196,11 +196,12 @@ def handle_resume_upload():
         projects=analysis.get('projects', ''),
         references=analysis.get('references', ''),
         resume_skills=analysis.get('skills', []),
-        skill_gaps=analysis.get('skill_gaps', []),
+        skill_data=analysis.get('skill_data', {}),
+        skill_gaps=skill_gaps,
         missing_sections=analysis.get('missing_sections', []),
         qualification=', '.join(analysis.get('qualifications', [])),
         quality_score=analysis.get('quality_score', 0),
-        feedback=analysis.get('feedback', []),
+        improvements=analysis.get('improvements', []),
         predicted_salary=predicted_salary,
         yt_links=yt_links,
         book_links=book_links,
