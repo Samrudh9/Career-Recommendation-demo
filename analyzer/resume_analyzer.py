@@ -167,6 +167,9 @@ def analyze_resume(text, target_career=None):
     # Quality score
     quality_report = check_resume_quality(text)
     
+    # Extract interests
+    interests = extract_interests(text)
+    
     return {
         "name": name,
         "contact": contact,
@@ -182,5 +185,6 @@ def analyze_resume(text, target_career=None):
         "quality_score": quality_report["score"],
         "qualifications": qualifications,
         "skills": skills,
+        "interests": interests,  # Add this line
         "career": target_career,
     }

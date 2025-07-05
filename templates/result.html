@@ -23,47 +23,106 @@
           {% if contact.linkedin %} | LinkedIn: {{ contact.linkedin }} {% endif %}
           {% if contact.github %} | GitHub: {{ contact.github }} {% endif %}
         </p>
+        {% if interests != "Not detected" %}
+          <p><b>Interests:</b> {{ interests }}</p>
+        {% endif %}
       </div>
+      
+      <!-- Salary Estimation Section -->
+      <div class="section salary-section">
+        <h3>Estimated Salary</h3>
+        <p class="salary-amount">{{ predicted_salary }}</p>
+        <p>Based on your skills, experience, and current market trends</p>
+      </div>
+
       <div class="section">
         <h3>Education</h3>
         <pre>{{ education }}</pre>
       </div>
+      
+      {% if certificates %}
       <div class="section">
         <h3>Certificates</h3>
         <pre>{{ certificates }}</pre>
       </div>
+      {% endif %}
+      
       <div class="section">
         <h3>Experience</h3>
         <pre>{{ experience }}</pre>
       </div>
+      
       <div class="section">
         <h3>Technical Skills</h3>
         <pre>{{ technical_skills }}</pre>
       </div>
+      
+      {% if skill_gaps %}
+      <div class="section">
+        <h3>Skill Gaps</h3>
+        <p>Consider developing these in-demand skills:</p>
+        <div>
+          {% for skill in skill_gaps %}
+            <span class="skill-gap">{{ skill }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      
       <div class="section">
         <h3>Projects</h3>
         <pre>{{ projects }}</pre>
       </div>
+      
       <div class="section">
         <h3>References</h3>
         <pre>{{ references }}</pre>
       </div>
+      
       <div class="section">
         <h3>Improvements & Suggestions</h3>
-        <ul>
-          {% for tip in improvements %}
-            <li>{{ tip }}</li>
-          {% endfor %}
-        </ul>
+        {% if feedback %}
+          <ul>
+            {% for tip in feedback %}
+              <li>{{ tip }}</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p>Your resume looks great! Here are some general tips:</p>
+          <ul>
+            <li>Quantify your achievements where possible</li>
+            <li>Keep your resume updated with recent projects</li>
+            <li>Tailor your resume for specific job applications</li>
+          </ul>
+        {% endif %}
       </div>
+      
       <div class="section">
         <p><b>Quality Score:</b> {{ quality_score }}/100</p>
       </div>
+      
+      {% if yt_links or book_links %}
       <div class="section">
-        <h4>📘 Recommended Resources</h4>
-        <ul>{% for link in yt_links %}<li><a href="{{ link }}">{{ link }}</a></li>{% endfor %}</ul>
-        <ul>{% for link in book_links %}<li>{{ link }}</li>{% endfor %}</ul>
+        <h3>📘 Recommended Resources</h3>
+        {% if yt_links %}
+          <h4>Video Tutorials</h4>
+          <ul>
+            {% for link in yt_links %}
+              <li><a href="{{ link }}" class="resource-link" target="_blank">{{ link|replace('https://www.youtube.com/results?search_query=', '')|replace('+tutorial', ' Tutorial')|title }}</a></li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+        
+        {% if book_links %}
+          <h4>Books & Guides</h4>
+          <ul>
+            {% for link in book_links %}
+              <li>{{ link }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
       </div>
+      {% endif %}
     </div>
   {% endif %}
 
@@ -74,11 +133,14 @@
       <p><span class="info-label">Description:</span> {{ item.description }}</p>
       <a href="https://in.indeed.com/jobs?q={{ item.career | urlencode }}" target="_blank" class="button">Explore Opportunities</a>
     </div>
+  {% endfor %}
+  
+  {% if mode == "manual" %}
     <div class="glass-card">
       <p><span class="info-label">Name:</span> {{ name }}</p>
       <p><span class="info-label">Interests:</span> {{ interests }}</p>
       <p><span class="info-label">Skills:</span> {{ skills }}</p>
     </div>
-  {% endfor %}
+  {% endif %}
 </body>
 </html>

@@ -172,11 +172,22 @@ def handle_resume_upload():
     )
     predicted_salary = f"₹{salary_value:,}/year"
 
+    # Add resource recommendations
+    yt_links = [
+        f"https://www.youtube.com/results?search_query={skill}+tutorial" 
+        for skill in analysis.get('skill_gaps', [])[:3]
+    ] if analysis.get('skill_gaps') else []
+    
+    book_links = [
+        f"Learn {skill.capitalize()}: The Complete Guide" 
+        for skill in analysis.get('skill_gaps', [])[:3]
+    ] if analysis.get('skill_gaps') else []
+
     return render_template(
         'result.html',
         mode="resume",
         name=analysis.get('name', 'Not detected'),
-        contact=analysis.get('contact', {}),  # Add this line
+        contact=analysis.get('contact', {}),
         interests=analysis.get('interests', 'Not detected'),
         education=analysis.get('education', ''),
         certificates=analysis.get('certificates', ''),
@@ -191,6 +202,8 @@ def handle_resume_upload():
         quality_score=analysis.get('quality_score', 0),
         feedback=analysis.get('feedback', []),
         predicted_salary=predicted_salary,
+        yt_links=yt_links,
+        book_links=book_links,
     )
 
 # ===== Run =====
