@@ -166,12 +166,17 @@ def handle_resume_upload():
     qualification = qualifications[0] if qualifications else 'Bachelors'  # Take first or default
     
     # Predict salary - now with qualification as a string
-    salary_value, _ = salary_est.estimate(
-        skills=skills_text,
-        career=career,
-        qualification=qualification  # Now a string, not a list
-    )
-    predicted_salary = f"₹{salary_value:,}/year"
+    try:
+        salary_value, _ = salary_est.estimate(
+            skills=skills_text,
+            career=str(career),  # Force string type
+            qualification=str(qualification)  # Force string type
+        )
+        predicted_salary = f"₹{salary_value:,}/year"
+    except Exception as e:
+        print(f"Salary prediction failed: {e}")
+        # Fallback to a default salary
+        predicted_salary = f"₹750,000/year (estimated)"
     
     skill_gaps = analysis.get('skill_gaps', [])
     

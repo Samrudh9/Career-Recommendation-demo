@@ -217,10 +217,6 @@ def analyze_resume(text, target_career=None):
     if not target_career:
         target_career = predict_career_from_skills(all_skills)
         
-    # Set a default career if prediction returns None or a non-string
-    if not target_career or not isinstance(target_career, str):
-        target_career = "Software Engineer"  # Default career path
-    
     technical_skills = ", ".join(all_skills)
     certificates = parsed_data.get("certificates", "")
     projects = parsed_data.get("projects", "")
