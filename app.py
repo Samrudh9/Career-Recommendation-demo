@@ -156,20 +156,13 @@ def handle_resume_upload():
 
     # Analyze resume
     analysis = analyze_resume(extracted_text)
+    quality_report = check_resume_quality(extracted_text)
+    quality_tips = quality_report["tips"]
 
-    name = analysis.get("name", "")
-    skills = analysis['skills']
-    skill_matches = analysis.get('skill_matches', [])
-    skill_gaps = analysis['skill_gaps']
-    quality_score = analysis['quality_score']
-    feedback = analysis.get('feedback', analysis.get('quality_feedback', []))
+    # Prepare data for salary prediction
+    skills_text = ', '.join(analysis.get('skills', []))
+    career = analysis.get('career', '')
     qualification = ', '.join(analysis.get('qualifications', []))
-    interests = ""  # You may extract this from resume or form if needed
-
-    # For salary prediction, you need a career prediction.
-    # Here, use the analyzed career or fallback to a default.
-    career = analysis.get('career', 'Unknown')
-    skills_text = ', '.join(skills)
 
     # Predict salary
     salary_value, _ = salary_est.estimate(
@@ -179,20 +172,21 @@ def handle_resume_upload():
     )
     predicted_salary = f"₹{salary_value:,}/year"
 
-    # Recommend resources
-
-    # Quality feedback
-    quality_report = check_resume_quality(extracted_text)
-    quality_tips = quality_report["tips"]
-
     return render_template(
         'result.html',
         mode="resume",
         name=analysis.get('name', 'Not detected'),
+        contact=analysis.get('contact', {}),  # Add this line
         interests=analysis.get('interests', 'Not detected'),
-        resume_skills=analysis.get('skills', []),           # <-- pass as list
-        skill_gaps=analysis.get('skill_gaps', []),           # <-- pass as list
-        missing_sections=analysis.get('missing_sections', []), # <-- pass as list
+        education=analysis.get('education', ''),
+        certificates=analysis.get('certificates', ''),
+        experience=analysis.get('experience', ''),
+        technical_skills=analysis.get('technical_skills', ''),
+        projects=analysis.get('projects', ''),
+        references=analysis.get('references', ''),
+        resume_skills=analysis.get('skills', []),
+        skill_gaps=analysis.get('skill_gaps', []),
+        missing_sections=analysis.get('missing_sections', []),
         qualification=', '.join(analysis.get('qualifications', [])),
         quality_score=analysis.get('quality_score', 0),
         feedback=analysis.get('feedback', []),

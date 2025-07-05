@@ -1,6 +1,7 @@
 import re
 import pandas as pd
 from .quality_checker import check_resume_quality
+from .ml_resume_parser import MLResumeParser
 
 # Load career data once
 CAREER_DATA_PATH = r's:\Career-Recommendation-demo\dataset\career_data_with_qualifications.csv'
@@ -53,11 +54,71 @@ def get_career_required_skills(career):
             return [s.strip().lower() for s in skills.split(',')]
     return []
 
+def extract_name_and_contact(text):
+    # Name: first line with 2+ words, title case
+    name = ""
+    contact = {}
+    lines = text.split('\n')
+    for line in lines:
+        if not name and len(line.split()) >= 2 and line == line.title():
+            name = line.strip()
+        if not contact.get("email"):
+            match = re.search(r"[\w\.-]+@[\w\.-]+\.\w+", line)
+            if match:
+                contact["email"] = match.group()
+        if not contact.get("phone"):
+            match = re.search(r"\+?\d{10,15}", line)
+            if match:
+                contact["phone"] = match.group()
+        if not contact.get("linkedin"):
+            match = re.search(r"(linkedin\.com/in/\S+)", line, re.I)
+            if match:
+                contact["linkedin"] = match.group()
+        if not contact.get("github"):
+            match = re.search(r"(github\.com/\S+)", line, re.I)
+            if match:
+                contact["github"] = match.group()
+    return name, contact
+
+def extract_section(text, section):
+    # Extracts lines under a section heading until next heading or empty line
+    pattern = rf"{section}[:\s]*\n(.*?)(?:\n[A-Z][^\n]*:|\n\n|$)"
+    match = re.search(pattern, text, re.I | re.S)
+    if match:
+        return match.group(1).strip()
+    return ""
+
 def analyze_resume(text, target_career=None):
-    name = extract_name(text)
-    interests = extract_interests(text)
-    skills = extract_skills(text)
-    qualifications = extract_qualification(text)
+    # Initialize ML parser
+    parser = MLResumeParser()
+    parsed_data = parser.parse_resume(text)
+    
+    # Extract data using ML
+    name = parsed_data.get("name", "")
+    contact = parsed_data.get("contact", {})
+    education = parsed_data.get("education", "")
+    experience = parsed_data.get("experience", "")
+    skills = parsed_data.get("skills", [])
+    certificates = parsed_data.get("certificates", "")
+    projects = parsed_data.get("projects", "")
+    
+    # Get career recommendations
+    career_matches = get_career_matches(skills)
+    
+    # Generate improvements
+    improvements = generate_improvements(parsed_data)
+    
+    return {
+        "name": name,
+        "contact": contact,
+        "education": education,
+        "experience": experience,
+        "skills": skills,
+        "certificates": certificates,
+        "projects": projects,
+        "improvements": improvements,
+        "career_matches": career_matches
+    }
 
     # Predict or select career
     if not target_career:
@@ -68,7 +129,7 @@ def analyze_resume(text, target_career=None):
             if not isinstance(skill_cell, str):
                 continue
             required = [s.strip().lower() for s in skill_cell.split(',')]
-            overlap = len(set(skills) & set(required))
+            overlap = len(set(technical_skills.split(',')) & set(required))
             if overlap > max_overlap:
                 max_overlap = overlap
                 best_match = row
@@ -85,15 +146,15 @@ def analyze_resume(text, target_career=None):
     resume_skills = extract_skills(text)  # from the resume
 
     skill_gaps = [s for s in required_skills if s not in resume_skills]
-    skill_matches = list(set(skills) & set(required_skills))
+    skill_matches = list(set(resume_skills) & set(required_skills))
 
     # Extra: Check for modern tech gaps
     cloud_skills = {"aws", "azure", "gcp", "docker", "kubernetes"}
     testing_skills = {"jest", "mocha", "pytest", "unittest"}
     uiux_skills = {"figma", "adobe xd", "sketch"}
-    missing_cloud = [s for s in cloud_skills if s not in skills]
-    missing_testing = [s for s in testing_skills if s not in skills]
-    missing_uiux = [s for s in uiux_skills if s not in skills]
+    missing_cloud = [s for s in cloud_skills if s not in resume_skills]
+    missing_testing = [s for s in testing_skills if s not in resume_skills]
+    missing_uiux = [s for s in uiux_skills if s not in resume_skills]
 
     # Section presence checks
     text_lower = text.lower()
@@ -121,9 +182,9 @@ def analyze_resume(text, target_career=None):
     feedback = []
     if not any(x in text_lower for x in ["objective", "summary"]):
         feedback.append("Add a brief Objective or Summary at the top to quickly communicate your career goals.")
-    if "javascript" not in skills:
+    if "javascript" not in resume_skills:
         feedback.append("List JavaScript explicitly in your technical skills if you have experience.")
-    if "typescript" not in skills:
+    if "typescript" not in resume_skills:
         feedback.append("Add TypeScript if you have experience or plan to work with modern JS frameworks.")
     if missing_cloud:
         feedback.append("Consider learning or mentioning Cloud/DevOps tools (e.g., AWS, Docker, Kubernetes).")
@@ -144,12 +205,18 @@ def analyze_resume(text, target_career=None):
 
     return {
         "name": name,
-        "interests": interests or "Not detected",
-        "missing_sections": missing_sections,  # must be a list, not a string!
-        "skill_gaps": skill_gaps + missing_cloud + missing_testing + missing_uiux,  # must be a list!
-        "feedback": feedback,
+        "contact": contact,
+        "education": education,
+        "certificates": certificates,
+        "experience": experience,
+        "technical_skills": technical_skills,
+        "projects": projects,
+        "references": references,
+        "missing_sections": missing_sections,
+        "skill_gaps": skill_gaps + missing_cloud + missing_testing + missing_uiux,
+        "improvements": feedback,
         "quality_score": quality_report["score"],
         "qualifications": qualifications,
-        "skills": skills,
+        "skills": skills,  # Now skills is defined
         "career": target_career,
     }
