@@ -1,7 +1,7 @@
-Flask
-scikit-learn
-pandas
-numpy
-pdfplumber
-spacy
-en_core_web_sm
+numpy==1.24.3
+pandas==2.0.3
+scikit-learn==1.3.0
+Flask==2.3.3
+pdfplumber==0.10.2
+spacy==3.6.1
+python-dotenv==1.0.0
