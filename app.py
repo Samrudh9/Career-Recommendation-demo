@@ -160,16 +160,19 @@ def handle_resume_upload():
     # Get detected skills and predicted career
     skills_text = ", ".join(analysis.get('skills', []))
     career = analysis.get('career', "Software Developer")  # Default if no career detected
-    qualification = analysis.get('qualifications', ['Bachelors'])
     
-    # Predict salary
+    # Fix qualification format - convert from list to string
+    qualifications = analysis.get('qualifications', ['Bachelors'])
+    qualification = qualifications[0] if qualifications else 'Bachelors'  # Take first or default
+    
+    # Predict salary - now with qualification as a string
     salary_value, _ = salary_est.estimate(
         skills=skills_text,
         career=career,
-        qualification=qualification
+        qualification=qualification  # Now a string, not a list
     )
     predicted_salary = f"₹{salary_value:,}/year"
-
+    
     skill_gaps = analysis.get('skill_gaps', [])
     
     # Add resource recommendations

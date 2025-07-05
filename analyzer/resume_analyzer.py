@@ -87,7 +87,8 @@ def extract_interests(text):
 
 def get_career_required_skills(career):
     """Get required skills for a specific career using the skills_career_map.csv file"""
-    if not career:
+    # Check if career is None or not a string
+    if not career or not isinstance(career, str):
         return []
     
     # Find the row for the specified career
@@ -96,7 +97,7 @@ def get_career_required_skills(career):
     if career_row.empty:
         # If exact match not found, try to find partial matches
         for idx, row in skills_map_df.iterrows():
-            if career.lower() in str(row['Career']).lower():
+            if isinstance(row['Career'], str) and career.lower() in row['Career'].lower():
                 career_row = skills_map_df.iloc[[idx]]
                 break
     
@@ -216,6 +217,10 @@ def analyze_resume(text, target_career=None):
     if not target_career:
         target_career = predict_career_from_skills(all_skills)
         
+    # Set a default career if prediction returns None or a non-string
+    if not target_career or not isinstance(target_career, str):
+        target_career = "Software Engineer"  # Default career path
+    
     technical_skills = ", ".join(all_skills)
     certificates = parsed_data.get("certificates", "")
     projects = parsed_data.get("projects", "")
