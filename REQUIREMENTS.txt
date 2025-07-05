@@ -1,5 +1,7 @@
-Flask==2.3.3
-scikit-learn==1.3.0
-pandas==2.0.3
-numpy==1.26.4
+Flask
+scikit-learn
+pandas
+numpy
 pdfplumber
+spacy
+en_core_web_sm
