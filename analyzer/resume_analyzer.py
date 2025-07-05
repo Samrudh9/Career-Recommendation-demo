@@ -1,5 +1,5 @@
 import re
-import pandas as pd
+import csv
 import os
 from .quality_checker import check_resume_quality
 from .ml_resume_parser import MLResumeParser
@@ -10,9 +10,18 @@ base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CAREER_DATA_PATH = os.path.join(base_dir, 'dataset', 'career_data_with_qualifications.csv')
 SKILLS_MAP_PATH = os.path.join(base_dir, 'dataset', 'skills_career_map.csv')
 
-# Load data files once - ensure Skill column is read as string
-career_df = pd.read_csv(CAREER_DATA_PATH)
-skills_map_df = pd.read_csv(SKILLS_MAP_PATH, dtype={'Skill': str})  # Force 'Skill' to be string
+# Load data files once via csv
+career_list = []
+with open(CAREER_DATA_PATH, newline='', encoding='utf-8') as f:
+    reader = csv.DictReader(f)
+    for row in reader:
+        career_list.append(row)
+# Skills map
+skills_map_list = []
+with open(SKILLS_MAP_PATH, newline='', encoding='utf-8') as f:
+    reader = csv.DictReader(f)
+    for row in reader:
+        skills_map_list.append(row)
 
 def extract_name(text):
     """Extract the name from the resume."""
@@ -410,8 +419,8 @@ def categorize_skills_better(skills):
 def extract_qualification(text):
     # Simple extraction based on known qualifications
     qualifications = set()
-    for quals in career_df['Qualification_required']:
-        for q in str(quals).split(','):
+    for row in career_list:
+        for q in str(row.get('Qualification_required','')).split(','):
             if re.search(r'\b' + re.escape(q.strip()) + r'\b', text, re.IGNORECASE):
                 qualifications.add(q.strip())
     return list(qualifications)
@@ -436,54 +445,21 @@ def get_career_required_skills(career):
     if not career or not isinstance(career, str):
         return []
     
-    # Find the row for the specified career (exact match first)
-    career_row = skills_map_df[skills_map_df['Career'].str.lower() == career.lower()]
+    # Find the row for the specified career
+    career_row = [row for row in skills_map_list if str(row.get('Career','')).lower()==career.lower()]
     
-    if career_row.empty:
-        # Try partial match
-        for idx, row in skills_map_df.iterrows():
-            if isinstance(row['Career'], str):
-                # Check if career contains any words from the row career
-                career_words = career.lower().split()
-                row_career_words = row['Career'].lower().split()
-                
-                # If there's significant overlap, use this row
-                overlap = set(career_words) & set(row_career_words)
-                if len(overlap) > 0:
-                    career_row = skills_map_df.iloc[[idx]]
-                    break
+    if not career_row:
+        # If exact match not found, try partial
+        for row in skills_map_list:
+            if career.lower() in str(row.get('Career','')).lower():
+                career_row = [row]
+                break
     
-    if career_row.empty:
-        # Fallback to a similar career based on keywords
-        fallback_mapping = {
-            'software': 'Software Engineer',
-            'developer': 'Software Engineer', 
-            'engineer': 'Software Engineer',
-            'data': 'Data Scientist',
-            'scientist': 'Data Scientist',
-            'frontend': 'Frontend Developer',
-            'backend': 'Software Engineer',
-            'mobile': 'Mobile App Developer',
-            'project': 'Project Manager',
-            'manager': 'Project Manager'
-        }
-        
-        for keyword, fallback_career in fallback_mapping.items():
-            if keyword in career.lower():
-                career_row = skills_map_df[skills_map_df['Career'] == fallback_career]
-                if not career_row.empty:
-                    break
-    
-    if career_row.empty:
+    if not career_row:
         return []
     
-    # Extract skills from the Skills column
-    skills_str = str(career_row['Skill'].iloc[0])
-    if skills_str == 'nan' or not skills_str:
-        return []
-    
-    # Split by comma and clean up
-    skills = [skill.strip() for skill in skills_str.split(',') if skill.strip()]
+    skills_str = str(career_row[0].get('Skill',''))
+    skills = [skill.strip() for skill in skills_str.split(',')]
     return skills
 
 def calculate_skill_gaps(user_skills, target_career):
@@ -555,11 +531,12 @@ def predict_career_from_skills(skills):
     # Calculate match score for each career
     career_scores = {}
     
-    for idx, row in skills_map_df.iterrows():
-        career = row['Career']
+    for row in skills_map_list:
+        career = row.get('Career','')
+        skill_value = row.get('Skill','')
         
         # Safely handle skill value by converting to string
-        skill_value = str(row['Skill']) if not pd.isna(row['Skill']) else ""
+        skill_value = str(skill_value) if not pd.isna(skill_value) else ""
         
         # Now we can safely split
         career_skills = [s.strip().lower() for s in skill_value.split(',')]
@@ -659,28 +636,24 @@ def analyze_resume(text, target_career=None):
     parser = MLResumeParser()
     parsed_data = parser.parse_resume(text)
     
-    # Extract data using improved extraction methods
-    name, contact = extract_name_and_contact(text)
+    # Extract data using ML parser (primary method)
+    name = parsed_data.get("name", "Not detected")
+    contact = parsed_data.get("contact", {})
+    education = parsed_data.get("education", "Not detected")
+    experience = parsed_data.get("experience", "Not detected")
+    projects = parsed_data.get("projects", "Not detected")
+    certificates = parsed_data.get("certificates", "Not detected")
+    interests = parsed_data.get("interests", "Not detected")
     
-    # Use improved section extraction
-    education = extract_education(text)
-    projects = extract_projects(text)
-    certificates = extract_certifications(text)
-    
-    # Get experience section
-    experience = extract_section(text, "experience") or extract_section(text, "work") or "Not detected"
-    
-    # Process skills using comprehensive extraction
-    extracted_skills = extract_skills(text)
-    
-    # Also get skills from ML parser as backup
+    # Process skills from ML parser
     skill_data = parsed_data.get("skills", {})
-    ml_skills = []
+    all_skills = []
     for category, skills in skill_data.items():
-        ml_skills.extend(skills)
+        all_skills.extend(skills)
     
-    # Combine both skill extraction methods
-    all_skills = list(set(extracted_skills + ml_skills))
+    # If ML parser didn't find skills, fall back to basic extraction
+    if not all_skills:
+        all_skills = extract_skills(text)
     
     # Auto-detect career using both approaches
     if not target_career:
