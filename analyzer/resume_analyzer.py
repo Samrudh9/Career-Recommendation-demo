@@ -1,11 +1,13 @@
 import re
 import pandas as pd
+import os
 from .quality_checker import check_resume_quality
 from .ml_resume_parser import MLResumeParser
 
-# Update how the CSV files are loaded
-CAREER_DATA_PATH = r's:\Career-Recommendation-demo\dataset\career_data_with_qualifications.csv'
-SKILLS_MAP_PATH = r's:\Career-Recommendation-demo\dataset\skills_career_map.csv'
+# Replace absolute Windows paths with relative paths
+base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CAREER_DATA_PATH = os.path.join(base_dir, 'dataset', 'career_data_with_qualifications.csv')
+SKILLS_MAP_PATH = os.path.join(base_dir, 'dataset', 'skills_career_map.csv')
 
 # Load data files once - ensure Skill column is read as string
 career_df = pd.read_csv(CAREER_DATA_PATH)
