@@ -108,32 +108,304 @@ def extract_name_and_contact(text):
     return name, contact
 
 def extract_section(text, section):
-    # Extracts lines under a section heading until next heading or empty line
-    pattern = rf"{section}[:\s]*\n(.*?)(?:\n[A-Z][^\n]*:|\n\n|$)"
-    match = re.search(pattern, text, re.I | re.S)
-    if match:
-        return match.group(1).strip()
-    return ""
+    """Extracts content under a section heading with improved patterns"""
+    # Multiple patterns to catch different section formats
+    patterns = [
+        rf"{section}[:\s]*\n(.*?)(?:\n[A-Z][A-Z\s]+[:\n]|\n\n|$)",  # All caps headings
+        rf"{section}[:\s]*\n(.*?)(?:\n[A-Za-z]+[:\n]|\n\n|$)",     # Title case headings
+        rf"^{section}[:\s]*\n(.*?)(?:\n\w+[:\n]|\n\n|$)",          # Start of line
+        rf"\n{section}[:\s]*\n(.*?)(?:\n\w+[:\n]|\n\n|$)"          # After newline
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, text, re.I | re.S | re.M)
+        if match and match.group(1).strip():
+            return match.group(1).strip()
+    
+    # Fallback: look for keywords in lines
+    lines = text.split('\n')
+    section_found = False
+    content_lines = []
+    
+    for line in lines:
+        if section.lower() in line.lower() and ':' in line:
+            section_found = True
+            # If content is on same line after colon
+            if ':' in line:
+                after_colon = line.split(':', 1)[1].strip()
+                if after_colon:
+                    content_lines.append(after_colon)
+            continue
+        
+        if section_found:
+            # Stop if we hit another section heading
+            if re.match(r'^[A-Z][A-Z\s]*:?$', line.strip()) or \
+               re.match(r'^[A-Za-z\s]+:$', line.strip()):
+                break
+            if line.strip():
+                content_lines.append(line.strip())
+    
+    return '\n'.join(content_lines) if content_lines else ""
+
+def extract_education(text):
+    """Extract education section with better parsing"""
+    education_keywords = ["education", "academic", "qualification", "degree", "university", "college", "school"]
+    
+    for keyword in education_keywords:
+        education = extract_section(text, keyword)
+        if education:
+            return education
+    
+    # Look for degree indicators
+    degree_patterns = [
+        r'(Bachelor|Master|PhD|B\.?Tech|M\.?Tech|B\.?E|M\.?E|B\.?Sc|M\.?Sc|MBA|BCA|MCA).*?(?:\n|$)',
+        r'(University|College).*?(?:\n|$)'
+    ]
+    
+    education_lines = []
+    for pattern in degree_patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        education_lines.extend(matches)
+    
+    return '\n'.join(education_lines) if education_lines else "Not detected"
+
+def extract_projects(text):
+    """Extract projects section with better parsing"""
+    project_keywords = ["project", "work", "development", "built", "created", "implemented"]
+    
+    # First try to find explicit projects section
+    for keyword in project_keywords:
+        projects = extract_section(text, keyword)
+        if projects and len(projects) > 50:  # Ensure meaningful content
+            return projects
+    
+    # Look for project indicators in text
+    project_patterns = [
+        r'(Project[:\s]+.*?)(?=\n[A-Z]|\n\n|$)',
+        r'(Built.*?)(?=\n[A-Z]|\n\n|$)',
+        r'(Developed.*?)(?=\n[A-Z]|\n\n|$)',
+        r'(Created.*?)(?=\n[A-Z]|\n\n|$)'
+    ]
+    
+    project_lines = []
+    for pattern in project_patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE | re.DOTALL)
+        project_lines.extend([match.strip() for match in matches])
+    
+    return '\n'.join(project_lines[:3]) if project_lines else "Not detected"  # Limit to top 3
+
+def extract_certifications(text):
+    """Extract certifications with better parsing"""
+    cert_keywords = ["certification", "certificate", "certified", "license"]
+    
+    # Try explicit sections first
+    for keyword in cert_keywords:
+        certs = extract_section(text, keyword)
+        if certs:
+            return certs
+    
+    # Look for certification patterns
+    cert_patterns = [
+        r'(AWS.*?(?:Certified|Certificate).*?)(?=\n|$)',
+        r'(Microsoft.*?(?:Certified|Certificate).*?)(?=\n|$)',
+        r'(Google.*?(?:Certified|Certificate).*?)(?=\n|$)',
+        r'(Oracle.*?(?:Certified|Certificate).*?)(?=\n|$)',
+        r'(Cisco.*?(?:Certified|Certificate).*?)(?=\n|$)',
+        r'(PMP|CISSP|CISA|CompTIA).*?(?=\n|$)'
+    ]
+    
+    cert_lines = []
+    for pattern in cert_patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        cert_lines.extend(matches)
+    
+    return '\n'.join(cert_lines) if cert_lines else "Not detected"
 
 def extract_skills(text):
-    # Define common skills to look for
-    common_skills = [
-        "python", "java", "javascript", "html", "css", "react", "angular", "node.js",
-        "sql", "mongodb", "mysql", "postgresql", "git", "docker", "kubernetes",
-        "aws", "azure", "gcp", "machine learning", "deep learning", "tensorflow",
-        "pytorch", "nlp", "data analysis", "data science", "c++", "c#", "go",
-        "rust", "php", "ruby", "swift", "kotlin", "flutter", "react native"
+    """Extract skills from resume text using comprehensive skill database"""
+    
+    # Get all skills from skills_career_map.csv
+    all_possible_skills = set()
+    for idx, row in skills_map_df.iterrows():
+        skill_value = str(row['Skill']) if not pd.isna(row['Skill']) else ""
+        skills_list = [s.strip() for s in skill_value.split(',')]
+        all_possible_skills.update([s.lower() for s in skills_list if s.strip()])
+    
+    # Additional comprehensive skill list
+    additional_skills = [
+        # Programming Languages
+        "python", "java", "javascript", "typescript", "c++", "c#", "c", "go", "rust", 
+        "php", "ruby", "swift", "kotlin", "scala", "r", "matlab", "perl", "vb.net",
+        
+        # Web Technologies
+        "html", "css", "react", "angular", "vue", "node.js", "express", "django", 
+        "flask", "laravel", "spring", "asp.net", "jquery", "bootstrap", "tailwind",
+        
+        # Databases
+        "mysql", "postgresql", "mongodb", "sqlite", "redis", "elasticsearch", 
+        "oracle", "sql server", "cassandra", "dynamodb", "neo4j",
+        
+        # Cloud & DevOps
+        "aws", "azure", "gcp", "docker", "kubernetes", "jenkins", "git", "github",
+        "gitlab", "ci/cd", "terraform", "ansible", "vagrant", "chef", "puppet",
+        
+        # Data Science & ML
+        "pandas", "numpy", "scikit-learn", "tensorflow", "pytorch", "keras", 
+        "tableau", "power bi", "jupyter", "spark", "hadoop", "airflow",
+        
+        # Mobile Development
+        "android", "ios", "flutter", "react native", "xamarin", "ionic",
+        
+        # Tools & Technologies
+        "linux", "windows", "macos", "bash", "powershell", "vim", "vscode", 
+        "intellij", "eclipse", "xcode", "photoshop", "illustrator", "figma",
+        
+        # Frameworks & Libraries
+        "spring boot", "hibernate", "redux", "graphql", "rest api", "soap",
+        "microservices", "oauth", "jwt", "websockets"
     ]
+    
+    all_possible_skills.update(additional_skills)
     
     # Find skills in text
     found_skills = []
     text_lower = text.lower()
     
-    for skill in common_skills:
-        if re.search(r'\b' + re.escape(skill) + r'\b', text_lower):
-            found_skills.append(skill)
+    # Replace common variations for better matching
+    text_normalized = text_lower
+    text_normalized = re.sub(r'\bnode\.?js\b', 'nodejs', text_normalized)
+    text_normalized = re.sub(r'\bc\+\+\b', 'cpp', text_normalized)
+    text_normalized = re.sub(r'\bc#\b', 'csharp', text_normalized)
+    
+    for skill in all_possible_skills:
+        skill_normalized = skill.lower()
+        skill_normalized = re.sub(r'\bnode\.?js\b', 'nodejs', skill_normalized)
+        skill_normalized = re.sub(r'\bc\+\+\b', 'cpp', skill_normalized)
+        skill_normalized = re.sub(r'\bc#\b', 'csharp', skill_normalized)
+        
+        # Create flexible patterns for skill matching
+        patterns = [
+            rf'\b{re.escape(skill_normalized)}\b',
+            rf'\b{re.escape(skill)}\b',
+            rf'{re.escape(skill_normalized)}',
+            rf'{re.escape(skill)}'
+        ]
+        
+        for pattern in patterns:
+            if re.search(pattern, text_normalized):
+                # Add original skill name to found skills
+                found_skills.append(skill)
+                break
+    
+    # Remove duplicates and return
+    return list(set(found_skills))
+
+def extract_skills_comprehensive(text):
+    """Extract skills using comprehensive pattern matching based on skills_career_map.csv"""
+    text_lower = text.lower()
+    found_skills = []
+    
+    # Get all skills from the career map dataset
+    all_skills_from_dataset = set()
+    for idx, row in skills_map_df.iterrows():
+        skill_value = str(row['Skill']) if not pd.isna(row['Skill']) else ""
+        skills_list = [s.strip() for s in skill_value.split(',')]
+        all_skills_from_dataset.update(skills_list)
+    
+    # Check for each skill in the text
+    for skill in all_skills_from_dataset:
+        if not skill.strip():
+            continue
             
-    return found_skills
+        skill_clean = skill.strip()
+        skill_lower = skill_clean.lower()
+        
+        # Handle special cases and variations
+        skill_variations = [skill_lower]
+        
+        # Add common variations
+        if skill_lower == 'javascript':
+            skill_variations.extend(['js', 'javascript'])
+        elif skill_lower == 'typescript':
+            skill_variations.extend(['ts', 'typescript'])
+        elif skill_lower == 'react':
+            skill_variations.extend(['react.js', 'reactjs'])
+        elif skill_lower == 'node.js':
+            skill_variations.extend(['nodejs', 'node'])
+        elif skill_lower == 'express.js':
+            skill_variations.extend(['express', 'expressjs'])
+        elif skill_lower == 'next.js':
+            skill_variations.extend(['nextjs', 'next'])
+        elif skill_lower == 'python':
+            skill_variations.extend(['python3', 'py'])
+        elif skill_lower == 'c++':
+            skill_variations.extend(['cpp', 'c plus plus'])
+        elif skill_lower == 'c#':
+            skill_variations.extend(['csharp', 'c sharp'])
+        
+        # Check if any variation is found in the text
+        for variation in skill_variations:
+            # Use word boundaries for better matching
+            pattern = r'\b' + re.escape(variation) + r'\b'
+            if re.search(pattern, text_lower):
+                found_skills.append(skill_clean)
+                break
+    
+    # Additional manual skill detection for common skills not in dataset
+    additional_skills = {
+        'html': 'HTML',
+        'css': 'CSS', 
+        'git': 'Git',
+        'github': 'GitHub',
+        'linux': 'Linux',
+        'windows': 'Windows',
+        'mysql': 'MySQL',
+        'postgresql': 'PostgreSQL',
+        'mongodb': 'MongoDB',
+        'redis': 'Redis',
+        'docker': 'Docker',
+        'kubernetes': 'Kubernetes',
+        'aws': 'AWS',
+        'azure': 'Azure',
+        'gcp': 'Google Cloud Platform'
+    }
+    
+    for skill_key, skill_name in additional_skills.items():
+        if re.search(r'\b' + re.escape(skill_key) + r'\b', text_lower):
+            if skill_name not in found_skills:
+                found_skills.append(skill_name)
+    
+    return list(set(found_skills))
+
+def categorize_skills_better(skills):
+    """Categorize skills into different categories"""
+    categories = {
+        "languages": [],
+        "frameworks": [],
+        "databases": [],
+        "tools": [],
+        "soft_skills": []
+    }
+    
+    language_keywords = ["python", "java", "javascript", "typescript", "c++", "c#", "php", "ruby"]
+    framework_keywords = ["react", "angular", "vue", "django", "flask", "spring", "express"]
+    database_keywords = ["mysql", "postgresql", "mongodb", "redis", "sqlite", "oracle"]
+    tool_keywords = ["git", "docker", "kubernetes", "aws", "azure", "jenkins", "linux"]
+    
+    for skill in skills:
+        skill_lower = skill.lower()
+        if any(lang in skill_lower for lang in language_keywords):
+            categories["languages"].append(skill)
+        elif any(fw in skill_lower for fw in framework_keywords):
+            categories["frameworks"].append(skill)
+        elif any(db in skill_lower for db in database_keywords):
+            categories["databases"].append(skill)
+        elif any(tool in skill_lower for tool in tool_keywords):
+            categories["tools"].append(skill)
+        else:
+            categories["tools"].append(skill)  # Default to tools
+    
+    return categories
 
 def extract_qualification(text):
     # Simple extraction based on known qualifications
@@ -161,28 +433,116 @@ def extract_interests(text):
 
 def get_career_required_skills(career):
     """Get required skills for a specific career using the skills_career_map.csv file"""
-    # Check if career is None or not a string
     if not career or not isinstance(career, str):
         return []
     
-    # Find the row for the specified career
+    # Find the row for the specified career (exact match first)
     career_row = skills_map_df[skills_map_df['Career'].str.lower() == career.lower()]
     
     if career_row.empty:
-        # If exact match not found, try to find partial matches
+        # Try partial match
         for idx, row in skills_map_df.iterrows():
-            if isinstance(row['Career'], str) and career.lower() in row['Career'].lower():
-                career_row = skills_map_df.iloc[[idx]]
-                break
+            if isinstance(row['Career'], str):
+                # Check if career contains any words from the row career
+                career_words = career.lower().split()
+                row_career_words = row['Career'].lower().split()
+                
+                # If there's significant overlap, use this row
+                overlap = set(career_words) & set(row_career_words)
+                if len(overlap) > 0:
+                    career_row = skills_map_df.iloc[[idx]]
+                    break
+    
+    if career_row.empty:
+        # Fallback to a similar career based on keywords
+        fallback_mapping = {
+            'software': 'Software Engineer',
+            'developer': 'Software Engineer', 
+            'engineer': 'Software Engineer',
+            'data': 'Data Scientist',
+            'scientist': 'Data Scientist',
+            'frontend': 'Frontend Developer',
+            'backend': 'Software Engineer',
+            'mobile': 'Mobile App Developer',
+            'project': 'Project Manager',
+            'manager': 'Project Manager'
+        }
+        
+        for keyword, fallback_career in fallback_mapping.items():
+            if keyword in career.lower():
+                career_row = skills_map_df[skills_map_df['Career'] == fallback_career]
+                if not career_row.empty:
+                    break
     
     if career_row.empty:
         return []
     
-    # Extract skills from the Skills column, ensuring we have a string
+    # Extract skills from the Skills column
     skills_str = str(career_row['Skill'].iloc[0])
-    # Split by comma and strip whitespace
-    skills = [skill.strip() for skill in skills_str.split(',')]
+    if skills_str == 'nan' or not skills_str:
+        return []
+    
+    # Split by comma and clean up
+    skills = [skill.strip() for skill in skills_str.split(',') if skill.strip()]
     return skills
+
+def calculate_skill_gaps(user_skills, target_career):
+    """Calculate skill gaps based on career requirements from skills_career_map.csv"""
+    required_skills = get_career_required_skills(target_career)
+    
+    if not required_skills:
+        return []
+    
+    # Normalize user skills for comparison (remove case sensitivity and extra spaces)
+    user_skills_normalized = []
+    for skill in user_skills:
+        if isinstance(skill, str):
+            # Clean and normalize skill names
+            normalized = skill.lower().strip()
+            # Handle common variations
+            if normalized in ['js', 'javascript']:
+                user_skills_normalized.append('javascript')
+            elif normalized in ['ts', 'typescript']:
+                user_skills_normalized.append('typescript')
+            elif normalized in ['react.js', 'reactjs']:
+                user_skills_normalized.append('react')
+            elif normalized in ['node.js', 'nodejs']:
+                user_skills_normalized.append('nodejs')
+            else:
+                user_skills_normalized.append(normalized)
+    
+    # Find missing skills with better matching
+    skill_gaps = []
+    for required_skill in required_skills:
+        if not isinstance(required_skill, str):
+            continue
+            
+        required_skill_normalized = required_skill.lower().strip()
+        
+        # Handle common variations for required skills too
+        if required_skill_normalized in ['js', 'javascript']:
+            required_skill_normalized = 'javascript'
+        elif required_skill_normalized in ['ts', 'typescript']:
+            required_skill_normalized = 'typescript'
+        elif required_skill_normalized in ['react.js', 'reactjs']:
+            required_skill_normalized = 'react'
+        elif required_skill_normalized in ['node.js', 'nodejs']:
+            required_skill_normalized = 'nodejs'
+        
+        # Check if skill is missing with flexible matching
+        found = False
+        for user_skill in user_skills_normalized:
+            if (required_skill_normalized == user_skill or 
+                required_skill_normalized in user_skill or 
+                user_skill in required_skill_normalized):
+                found = True
+                break
+        
+        if not found:
+            skill_gaps.append(required_skill)
+    
+    # Limit to most important gaps (top 10)
+    return skill_gaps[:10]
 
 def predict_career_from_skills(skills):
     """Predict the most likely career based on skills in the resume"""
@@ -231,70 +591,96 @@ def generate_improvement_feedback(text, skills, experience, education, projects)
     feedback = []
     text_lower = text.lower()
     
-    # Check for summary/objective
-    if not any(x in text_lower for x in ["objective", "summary", "profile"]):
-        feedback.append("Add a professional summary at the beginning to highlight career goals")
+    # Check for professional summary/objective
+    if not any(x in text_lower for x in ["objective", "summary", "profile", "about"]):
+        feedback.append("Add a professional summary to highlight your career goals and key strengths")
     
     # Check for quantified achievements
-    if not any(x in text_lower for x in ["increased", "improved", "reduced", "saved", "achieved", "%", "percent"]):
-        feedback.append("Quantify achievements in your internship and project (e.g., \"Increased efficiency by 30%\")")
+    if not any(x in text for x in ["increased", "improved", "reduced", "saved", "achieved", "%", "percent", "$", "million", "thousand"]):
+        feedback.append("Quantify your achievements with numbers, percentages, or dollar amounts")
     
-    # Check for internship details
-    if "intern" in text_lower and not any(x in text_lower for x in ["developed", "created", "built", "implemented"]):
-        feedback.append("Elaborate on your internship - what technologies did you use? What did you accomplish?")
+    # Check for action verbs
+    action_verbs = ["developed", "created", "built", "implemented", "designed", "led", "managed", "optimized", "analyzed"]
+    if not any(verb in text_lower for verb in action_verbs):
+        feedback.append("Use strong action verbs to describe your accomplishments")
     
-    # Check for GitHub link
-    if "github" not in text_lower:
-        feedback.append("Add GitHub profile link to showcase your code")
+    # Check for project details
+    if "project" in text_lower:
+        if not any(tech in text_lower for tech in ["github", "git", "repository", "demo", "deployed"]):
+            feedback.append("Include links to your project repositories and live demos")
+    else:
+        feedback.append("Add a projects section to showcase your practical experience")
     
-    # Check for project metrics
-    if "project" in text_lower and not any(x in text_lower for x in ["user", "performance", "improved", "efficiency"]):
-        feedback.append("Include project metrics - user numbers, performance improvements, etc.")
+    # Check for contact information completeness
+    contact_keywords = ["email", "@", "phone", "linkedin", "github"]
+    missing_contact = []
+    if "@" not in text:
+        missing_contact.append("email")
+    if "linkedin" not in text_lower:
+        missing_contact.append("LinkedIn profile")
+    if "github" not in text_lower and any(skill in ["python", "javascript", "java", "react"] for skill in skills):
+        missing_contact.append("GitHub profile")
     
-    # Check for coursework
-    if not any(x in text_lower for x in ["coursework", "relevant courses", "key courses"]):
-        feedback.append("Add relevant coursework from your education")
+    if missing_contact:
+        feedback.append(f"Add missing contact information: {', '.join(missing_contact)}")
     
-    # Check for skill organization
-    skill_categories = ["languages", "frameworks", "tools", "databases"]
-    if not any(category in text_lower for category in skill_categories):
-        feedback.append("Organize technical skills into clearer categories")
+    # Check for keywords relevant to target jobs
+    if not any(modern_tech in text_lower for modern_tech in ["cloud", "api", "agile", "ci/cd", "docker"]):
+        feedback.append("Include modern technology keywords relevant to current job market")
     
-    # Check for hackathons/competitions
-    if not any(x in text_lower for x in ["hackathon", "competition", "contest", "challenge"]):
-        feedback.append("Add any hackathons or competitions you've participated in")
+    # Check education details
+    if "education" in text_lower or "degree" in text_lower:
+        if not any(detail in text_lower for detail in ["gpa", "cgpa", "honors", "dean's list", "cum laude"]):
+            feedback.append("Consider adding academic achievements or relevant coursework")
     
-    # Check for extracurricular
-    if not any(x in text_lower for x in ["extracurricular", "volunteer", "club", "organization"]):
-        feedback.append("Add section on extracurricular activities if applicable")
+    # Check for soft skills
+    soft_skills = ["leadership", "communication", "teamwork", "problem solving", "collaboration"]
+    if not any(skill in text_lower for skill in soft_skills):
+        feedback.append("Include soft skills and leadership experiences")
     
-    # Check for skill gaps
-    modern_skills = ["typescript", "react", "docker", "kubernetes", "aws", "azure", "testing", "ci/cd"]
-    missing_modern = [skill for skill in modern_skills if skill not in text_lower]
-    if missing_modern:
-        feedback.append(f"Consider learning these in-demand skills: {', '.join(missing_modern[:3])}")
+    # Check for certifications
+    if not any(cert in text_lower for cert in ["certification", "certificate", "certified", "aws", "google", "microsoft"]):
+        feedback.append("Add relevant certifications to strengthen your technical credibility")
     
-    return feedback
+    # Skill-specific feedback
+    if len(skills) < 5:
+        feedback.append("Expand your technical skills section to include more relevant technologies")
+    
+    # Format and length feedback
+    if len(text.split()) < 200:
+        feedback.append("Expand your resume content - aim for 400-600 words for better impact")
+    elif len(text.split()) > 800:
+        feedback.append("Consider condensing your resume - focus on most relevant experiences")
+    
+    return feedback[:8]  # Limit to most important feedback
 
 def analyze_resume(text, target_career=None):
     # Initialize ML parser
     parser = MLResumeParser()
     parsed_data = parser.parse_resume(text)
     
-    # Extract data using ML
-    name = parsed_data.get("name", "") or extract_name(text)
-    contact = parsed_data.get("contact", {})
-    education = parsed_data.get("education", "")
-    experience = parsed_data.get("experience", "")
+    # Extract data using improved extraction methods
+    name, contact = extract_name_and_contact(text)
     
-    # Process skills
+    # Use improved section extraction
+    education = extract_education(text)
+    projects = extract_projects(text)
+    certificates = extract_certifications(text)
+    
+    # Get experience section
+    experience = extract_section(text, "experience") or extract_section(text, "work") or "Not detected"
+    
+    # Process skills using comprehensive extraction
+    extracted_skills = extract_skills(text)
+    
+    # Also get skills from ML parser as backup
     skill_data = parsed_data.get("skills", {})
-    all_skills = []
+    ml_skills = []
     for category, skills in skill_data.items():
-        all_skills.extend(skills)
+        ml_skills.extend(skills)
     
-    if not all_skills:
-        all_skills = extract_skills(text)
+    # Combine both skill extraction methods
+    all_skills = list(set(extracted_skills + ml_skills))
     
     # Auto-detect career using both approaches
     if not target_career:
@@ -313,41 +699,18 @@ def analyze_resume(text, target_career=None):
     # Set a default career if prediction returns None or a non-string
     if not target_career or not isinstance(target_career, str):
         target_career = "Software Engineer"  # Default
-    
-    # Create career match objects with descriptions
-    career_matches = []
-    for career_name, confidence in top_careers:
-        description = resume_classifier.get_career_description(career_name)
-        career_matches.append({
-            "career": career_name,
-            "confidence": confidence,
-            "description": description
-        })
         
     technical_skills = ", ".join(all_skills)
-    certificates = parsed_data.get("certificates", "")
-    projects = parsed_data.get("projects", "")
-    references = extract_section(text, "References")
     qualifications = extract_qualification(text)
     interests = parsed_data.get("interests", "") or extract_interests(text)
     
-    # Required skills for the target career
-    required_skills = get_career_required_skills(target_career)
-    skill_gaps = [s for s in required_skills if s.lower() not in [sk.lower() for sk in all_skills]]
-    
-    # Extra: Check for modern tech gaps
-    cloud_skills = ["aws", "azure", "gcp", "docker", "kubernetes"]
-    testing_skills = ["jest", "mocha", "pytest", "unittest", "testing"]
-    uiux_skills = ["figma", "adobe xd", "sketch", "ui/ux"]
-    
-    missing_cloud = [s for s in cloud_skills if s.lower() not in [sk.lower() for sk in all_skills]]
-    missing_testing = [s for s in testing_skills if s.lower() not in [sk.lower() for sk in all_skills]]
-    missing_uiux = [s for s in uiux_skills if s.lower() not in [sk.lower() for sk in all_skills]]
+    # Use improved skill gap calculation
+    skill_gaps = calculate_skill_gaps(all_skills, target_career)
     
     # Section presence checks
     text_lower = text.lower()
     has_skills_section = any(re.search(r'\bskills?\b', line) for line in text.split('\n'))
-    has_projects_section = any(re.search(r'\bprojects?\b', line) for line in text.split('\n'))
+    has_projects_section = "project" in text_lower
     missing_sections = []
     
     # Generate missing sections list
@@ -355,7 +718,7 @@ def analyze_resume(text, target_career=None):
         missing_sections.append("Skills")
     if not has_projects_section:
         missing_sections.append("Projects")
-    if not any(x in text_lower for x in ["certification", "certificate"]):
+    if "certification" not in text_lower and "certificate" not in text_lower:
         missing_sections.append("Certifications")
     if not any(x in text_lower for x in ["objective", "summary"]):
         missing_sections.append("Objective/Summary")
@@ -366,7 +729,16 @@ def analyze_resume(text, target_career=None):
     feedback = generate_improvement_feedback(text, all_skills, experience, education, projects)
     
     # Quality score
-    quality_report = check_resume_quality(text)
+    quality_report = check_resume_quality(text, {
+        'name': name,
+        'contact': contact,
+        'education': education,
+        'experience': experience,
+        'skills': all_skills,
+        'skill_data': skill_data,
+        'projects': projects,
+        'certificates': certificates
+    })
     
     return {
         "name": name,
@@ -376,9 +748,8 @@ def analyze_resume(text, target_career=None):
         "experience": experience,
         "technical_skills": technical_skills,
         "projects": projects,
-        "references": references,
         "missing_sections": missing_sections,
-        "skill_gaps": skill_gaps + missing_cloud + missing_testing + missing_uiux,
+        "skill_gaps": skill_gaps,
         "improvements": feedback,
         "quality_score": quality_report["score"],
         "qualifications": qualifications,
@@ -386,5 +757,4 @@ def analyze_resume(text, target_career=None):
         "skill_data": skill_data,
         "interests": interests,
         "career": target_career,
-        "career_matches": career_matches,
     }

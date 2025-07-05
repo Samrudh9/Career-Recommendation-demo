@@ -99,12 +99,13 @@
     }
     
     .section {
-      background: #b2b3b6;
+      background: #2a2b32;
       border-radius: 12px;
       padding: 20px;
       margin-bottom: 25px;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
       border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #e0e0e0;
     }
     
     .section h3 {
@@ -113,6 +114,14 @@
       padding-bottom: 10px;
       margin-bottom: 15px;
       color: #00c2ff;
+    }
+    
+    .section p, .section pre, .section li {
+      color: #e0e0e0;
+    }
+    
+    .section b, .section strong {
+      color: #ffffff;
     }
     
     .skill-gap {
@@ -148,37 +157,24 @@
     <div class="resume-review">
       <h1>Resume Analysis</h1>
       
-      <!-- Career Matches Section - Prominently displayed at the top -->
-      <div class="career-matches-container">
-        <div class="career-matches-header">
-          <h2>Recommended Career Paths</h2>
-          <p>Based on your skills, experience, and qualifications</p>
-        </div>
-        
-        <div class="career-matches-grid">
-          {% for item in top_3_careers %}
-            <div class="career-match-card">
-              <h3>{{ item.career }}</h3>
-              <div class="confidence-text">{{ item.confidence }}% Match</div>
-              <div class="confidence-bar">
-                <div class="confidence-fill" style="width: {{ item.confidence }}%"></div>
-              </div>
-              <div class="career-description">{{ item.description }}</div>
-              <a href="https://in.indeed.com/jobs?q={{ item.career | urlencode }}" target="_blank" class="explore-button">Explore Opportunities</a>
-            </div>
-          {% endfor %}
+      <!-- Predicted Career Section -->
+      <div class="section">
+        <h3>Predicted Career Path</h3>
+        <div class="predicted-career">
+          <h4 style="color: #00c2ff; font-size: 20px; margin-bottom: 10px;">{{ predicted_career or "Software Developer" }}</h4>
+          <p style="color: #d0d0d0;">Based on your skills, experience, and qualifications analysis</p>
         </div>
       </div>
       
-      <!-- Rest of the content -->
+      <!-- Contact and Personal Information -->
       <div class="section">
+        <h3>Personal Information</h3>
         <p><b>Name:</b> {{ name }}</p>
         <p><b>Contact:</b> 
           {% if contact.email %}Email: {{ contact.email }}{% endif %}
-          {% if contact.phone %} | Phone: {{ contact.phone }}{% endif %}
-          {% if contact.skype %} | Skype: {{ contact.skype }}{% endif %}
-          {% if contact.linkedin %} | <a href="{{ contact.linkedin }}">LinkedIn</a>{% endif %}
-          {% if contact.github %} | <a href="{{ contact.github }}">GitHub</a>{% endif %}
+          {% if contact.phone %}{% if contact.email %} | {% endif %}Phone: {{ contact.phone }}{% endif %}
+          {% if contact.linkedin %}{% if contact.email or contact.phone %} | {% endif %}<a href="{{ contact.linkedin }}" target="_blank">LinkedIn</a>{% endif %}
+          {% if contact.github %}{% if contact.email or contact.phone or contact.linkedin %} | {% endif %}<a href="{{ contact.github }}" target="_blank">GitHub</a>{% endif %}
         </p>
       </div>
       
@@ -256,11 +252,6 @@
           {% endfor %}
         </ul>
         <p><b>Quality Score:</b> {{ quality_score }}/100</p>
-      </div>
-      
-      <div class="section">
-        <h3>References</h3>
-        <pre>{{ references }}</pre>
       </div>
       
       <!-- Salary Estimation Section -->

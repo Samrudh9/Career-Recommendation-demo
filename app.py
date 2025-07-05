@@ -12,7 +12,7 @@ from werkzeug.utils import secure_filename
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
-from analyzer.resume_parser import extract_text_from_pdf
+from analyzer.resume_parser import extract_text_from_file
 from analyzer.resume_analyzer import analyze_resume
 from analyzer.quality_checker import check_resume_quality
 from analyzer.salary_estimator import salary_est
@@ -21,7 +21,7 @@ app = Flask(__name__)
 
 # ===== Configuration =====
 UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'pdf'}
+ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx'}
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
@@ -152,7 +152,7 @@ def handle_resume_upload():
     tmp_file.write(resume_file.read())
 
     # Extract text from the uploaded resume
-    extracted_text = extract_text_from_pdf(tmp_file)
+    extracted_text = extract_text_from_file(tmp_file, resume_file.filename)
     
     # Extract skills from resume text
     analysis = analyze_resume(extracted_text)
@@ -160,9 +160,6 @@ def handle_resume_upload():
     # Get detected skills and predicted career
     skills_text = ", ".join(analysis.get('skills', []))
     career = analysis.get('career', "Software Developer")  # Default if no career detected
-    
-    # Get career matches for top 3 recommendations
-    career_matches = analysis.get('career_matches', [])
     
     # Fix qualification format - convert from list to string
     qualifications = analysis.get('qualifications', ['Bachelors'])
@@ -205,7 +202,6 @@ def handle_resume_upload():
         experience=analysis.get('experience', ''),
         technical_skills=analysis.get('technical_skills', ''),
         projects=analysis.get('projects', ''),
-        references=analysis.get('references', ''),
         resume_skills=analysis.get('skills', []),
         skill_data=analysis.get('skill_data', {}),
         skill_gaps=skill_gaps,
@@ -214,9 +210,9 @@ def handle_resume_upload():
         quality_score=analysis.get('quality_score', 0),
         improvements=analysis.get('improvements', []),
         predicted_salary=predicted_salary,
+        predicted_career=career,  # Pass single predicted career
         yt_links=yt_links,
         book_links=book_links,
-        top_3_careers=career_matches,  # Pass career matches for display
     )
 
 # ===== Feature Disabled =====
