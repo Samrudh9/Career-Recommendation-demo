@@ -1,0 +1,16 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"args": [
+				"app.py"
+			],
+			"command": "python",
+			"group": "build",
+			"isBackground": false,
+			"label": "Run Career Recommendation App",
+			"problemMatcher": [],
+			"type": "shell"
+		}
+	]
+}

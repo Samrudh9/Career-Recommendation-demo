@@ -13,52 +13,210 @@
       box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
       backdrop-filter: blur(6px);
     }
+    
+    .skill-pill {
+      display: inline-block;
+      background: rgba(72, 149, 239, 0.2);
+      border-radius: 20px;
+      padding: 5px 12px;
+      margin: 3px;
+      font-size: 14px;
+    }
+    
+    .skill-gap {
+      display: inline-block;
+      background: rgba(255, 99, 71, 0.2);
+      border-radius: 20px;
+      padding: 5px 12px;
+      margin: 3px;
+      font-size: 14px;
+    }
+    
+    .quality-score {
+      font-size: 36px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #00c6ff, #0072ff);
+      color: white;
+      margin: 0 auto 20px;
+    }
+    
+    .project-card {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+    
+    .education-item {
+      margin-bottom: 10px;
+      border-left: 3px solid #0072ff;
+      padding-left: 10px;
+    }
   </style>
 </head>
 <body>
   <h1 class="title">Resume Analysis Results</h1>
 
+  <!-- Personal Information -->
   <div class="glass-card">
-    <h2>Extracted Skills</h2>
-    <p>{{ skills }}</p>
+    <h2>Personal Information</h2>
+    <p><strong>Name:</strong> {{ result.name|e }}</p>
+    <p><strong>Email:</strong> {{ result.contact.email|e }}</p>
+    {% if result.contact.phone %}
+    <p><strong>Phone:</strong> {{ result.contact.phone|e }}</p>
+    {% endif %}
+    {% if result.contact.linkedin %}
+    <p><strong>LinkedIn:</strong> <a href="{{ result.contact.linkedin|e }}" target="_blank" rel="noopener noreferrer">{{ result.contact.linkedin|e }}</a></p>
+    {% endif %}
+    {% if result.contact.github %}
+    <p><strong>GitHub:</strong> <a href="{{ result.contact.github|e }}" target="_blank" rel="noopener noreferrer">{{ result.contact.github|e }}</a></p>
+    {% endif %}
   </div>
 
+  <!-- Career Recommendation -->
   <div class="glass-card">
-    <h2>Resume Score</h2>
-    <p>{{ resume_score }} / 100</p>
+    <h2>Career Recommendation</h2>
+    <h3>{{ result.career|e }}</h3>
   </div>
 
+  <!-- Resume Quality Score -->
   <div class="glass-card">
-    <h2>Top 3 Career Recommendations</h2>
-    {% for career in top_3_careers %}
-      <div style="margin-bottom: 15px;">
-        <h3>{{ career.career }}</h3>
-        <p><strong>Confidence:</strong> {{ career.confidence }}%</p>
-        <p><strong>Description:</strong> {{ career.description }}</p>
-      </div>
-    {% endfor %}
-  </div>
-
-  <div class="glass-card">
-    <h2>Resume Quality Feedback</h2>
+    <h2>Resume Quality</h2>
+    <div class="quality-score">{{ result.quality_score|e }}</div>
+    <h3>Improvement Suggestions</h3>
     <ul>
-      {% for feedback in quality_feedback %}
-        <li>{{ feedback }}</li>
+      {% for suggestion in result.improvements %}
+        <li>{{ suggestion|e }}</li>
       {% endfor %}
     </ul>
   </div>
 
+  <!-- Skills Section -->
   <div class="glass-card">
-    <h2>Recommended Learning Resources</h2>
-    <ul>
-      {% for resource in resources %}
-        <li><a href="{{ resource.link }}" target="_blank">{{ resource.title }}</a></li>
+    <h2>Skills</h2>
+    
+    {% if result.skills.languages %}
+    <h3>Programming Languages</h3>
+    <div>
+      {% for skill in result.skills.languages %}
+        <span class="skill-pill">{{ skill|e }}</span>
       {% endfor %}
-    </ul>
+    </div>
+    {% endif %}
+    
+    {% if result.skills.frameworks %}
+    <h3>Frameworks</h3>
+    <div>
+      {% for skill in result.skills.frameworks %}
+        <span class="skill-pill">{{ skill|e }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+    
+    {% if result.skills.databases %}
+    <h3>Databases</h3>
+    <div>
+      {% for skill in result.skills.databases %}
+        <span class="skill-pill">{{ skill|e }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+    
+    {% if result.skills.tools %}
+    <h3>Tools</h3>
+    <div>
+      {% for skill in result.skills.tools %}
+        <span class="skill-pill">{{ skill|e }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+    
+    {% if result.skills.soft_skills %}
+    <h3>Soft Skills</h3>
+    <div>
+      {% for skill in result.skills.soft_skills %}
+        <span class="skill-pill">{{ skill|e }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+    
+    {% if result.skill_gaps %}
+    <h3>Skill Gaps</h3>
+    <div>
+      {% for skill in result.skill_gaps %}
+        <span class="skill-gap">{{ skill|e }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  
+  <!-- Education Section -->
+  <div class="glass-card">
+    <h2>Education</h2>
+    {% if result.education is iterable and result.education is not string %}
+      {% for edu in result.education %}
+        <div class="education-item">
+          <h3>{{ edu.institution|e }}</h3>
+          {% if edu.degree %}
+          <p><strong>Degree:</strong> {{ edu.degree|e }}</p>
+          {% endif %}
+          {% if edu.year %}
+          <p><strong>Year:</strong> {{ edu.year|e }}</p>
+          {% endif %}
+          {% if edu.score %}
+          <p><strong>Score:</strong> {{ edu.score|e }}</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+    {% else %}
+      <p>{{ result.education|e }}</p>
+    {% endif %}
+  </div>
+  
+  <!-- Projects Section -->
+  <div class="glass-card">
+    <h2>Projects</h2>
+    {% if result.projects is iterable and result.projects is not string %}
+      {% for project in result.projects %}
+        <div class="project-card">
+          <h3>{{ project.title|e }}</h3>
+          <p>{{ project.description|e }}</p>
+          {% if project.technologies %}
+          <p><strong>Technologies:</strong> 
+            {% for tech in project.technologies %}
+              <span class="skill-pill">{{ tech|e }}</span>
+            {% endfor %}
+          </p>
+          {% endif %}
+        </div>
+      {% endfor %}
+    {% else %}
+      <p>{{ result.projects|e }}</p>
+    {% endif %}
+  </div>
+  
+  <!-- Certificates Section -->
+  <div class="glass-card">
+    <h2>Certifications</h2>
+    {% if result.certificates is iterable and result.certificates is not string %}
+      <ul>
+        {% for cert in result.certificates %}
+          <li>{{ cert|e }}</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>{{ result.certificates|e }}</p>
+    {% endif %}
   </div>
 
-  <div class="glass-card">
-    <a href="/" class="button">Back to Home</a>
+  <div class="button-container">
+    <a href="/" class="button">Try Another Resume</a>
   </div>
 </body>
 </html>

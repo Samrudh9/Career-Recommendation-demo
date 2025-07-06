@@ -3,11 +3,12 @@ import sys
 import pickle
 import random
 import tempfile
+import html
 from collections.abc import Sequence
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template, redirect, url_for, flash
+from markupsafe import Markup
 from analyzer.resume_analyzer import analyze_resume
 from tempfile import TemporaryFile
-from flask import Flask, request, render_template
 from werkzeug.utils import secure_filename
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
@@ -21,7 +22,7 @@ app = Flask(__name__)
 
 # ===== Configuration =====
 UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx'}
+ALLOWED_EXTENSIONS = {'docx'}  # Removed PDF support for now
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
@@ -154,6 +155,10 @@ def handle_resume_upload():
     # Extract text from the uploaded resume
     extracted_text = extract_text_from_file(tmp_file, resume_file.filename)
     
+    # Check if extraction failed with an error
+    if isinstance(extracted_text, str) and extracted_text.startswith("ERROR:"):
+        return f"❌ {extracted_text[7:]}", 400
+    
     # Extract skills from resume text
     analysis = analyze_resume(extracted_text)
     
@@ -211,11 +216,73 @@ def handle_resume_upload():
         predicted_salary=predicted_salary,
     )
 
+# ===== Enhanced Resume Analysis Route =====
+@app.route('/analyze_resume', methods=['POST'])
+def resume_analysis():
+    # Check if a file was uploaded
+    if 'resume' not in request.files:
+        return jsonify({'error': 'No file uploaded'}), 400
+    
+    file = request.files['resume']
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    
+    if not allowed_file(file.filename):
+        return jsonify({'error': 'File type not allowed'}), 400
+    
+    try:
+        # Save the file temporarily
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+        
+        # Extract structured information from the resume
+        resume_data = extract_text_from_file(filepath, parse_structure=True)
+        
+        # If extraction failed
+        if not resume_data:
+            # Fallback to text extraction and traditional analysis
+            text = extract_text_from_file(filepath)
+            if not text:
+                return jsonify({'error': 'Could not extract text from file'}), 500
+            
+            # Analyze using traditional method
+            analysis = analyze_resume(text)
+            
+            # Sanitize the output to prevent XSS
+            sanitize_data(analysis)
+            
+            return render_template('resume_result.html', result=analysis)
+        
+        # Perform additional analysis (career prediction, salary estimation)
+        text = extract_text_from_file(filepath)  # Get plain text for ML models
+        
+        # Career prediction and other analyses
+        analysis_result = analyze_resume(text)
+        
+        # Merge the structured data with analysis results
+        result = {**resume_data}
+        result['career'] = analysis_result.get('career', 'Not detected')
+        result['skill_gaps'] = analysis_result.get('skill_gaps', [])
+        result['improvements'] = analysis_result.get('improvements', [])
+        result['quality_score'] = analysis_result.get('quality_score', 0)
+        
+        # Sanitize data to prevent XSS
+        sanitize_data(result)
+        
+        # Clean up temporary file
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        
+        return render_template('resume_result.html', result=result)
+    
+    except Exception as e:
+        return jsonify({'error': f'An error occurred: {str(e)}'}), 500
+
 # ===== Feature Disabled =====
 @app.route('/multi-upload')
 def multi_upload():
     # Redirect to single resume upload with a message
-    from flask import redirect, url_for, flash
     # Use flash if available, otherwise redirect to regular upload
     try:
         flash("Multiple resume analysis is currently disabled. Please upload one resume at a time.", "info")
@@ -227,6 +294,26 @@ def multi_upload():
 def handle_multi_resume_upload():
     # Return clear message that feature is disabled
     return "Multi-resume analysis is currently disabled. Please use the single resume upload feature instead.", 400
+
+# ===== Sanitize Data Function =====
+def sanitize_data(data):
+    """
+    Recursively sanitize all string values in a data structure to prevent XSS.
+    Works on nested dictionaries and lists.
+    """
+    if isinstance(data, dict):
+        for key, value in data.items():
+            if isinstance(value, str):
+                data[key] = html.escape(value)
+            elif isinstance(value, (dict, list)):
+                sanitize_data(value)
+    elif isinstance(data, list):
+        for i, item in enumerate(data):
+            if isinstance(item, str):
+                data[i] = html.escape(item)
+            elif isinstance(item, (dict, list)):
+                sanitize_data(item)
+    return data
 
 # ===== Run =====
 if __name__ == '__main__':

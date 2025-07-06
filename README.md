@@ -12,6 +12,7 @@ Many students and early professionals struggle to choose the right career. Our p
 - Build a Flask-based web application for user interaction.
 - Display the top 3–5 career suggestions with brief descriptions.
 - Deploy the system using Replit or PythonAnywhere.
+- Parse resume documents (DOCX format only) for automated skill extraction.
 
 ## 🧪 Methodology
 
@@ -36,11 +37,12 @@ Many students and early professionals struggle to choose the right career. Our p
 
 ## 🛠️ Tools and Technologies
 - **Languages:** Python, HTML, CSS
-- **Libraries:** Scikit-learn, Pandas, Numpy, Joblib
+- **Libraries:** Scikit-learn, Pandas, Numpy, Joblib, python-docx
 - **Framework:** Flask
 - **Visualization:** Matplotlib, Seaborn
 - **Collaboration:** GitHub, Google Drive, Replit Teams
 - **Deployment:** Replit / PythonAnywhere
+- **Document Processing:** python-docx (for DOCX file parsing)
 
 ## ⚠️ Challenges and Solutions
 | Challenge | Solution |
@@ -48,6 +50,7 @@ Many students and early professionals struggle to choose the right career. Our p
 | Small or imbalanced dataset | Use synthetic data or expand dataset manually |
 | Model underperformance | Try different algorithms and tune hyperparameters |
 | New team to tech stack | Use beginner-friendly tools and tutorials |
+| Limited document support | Currently only DOCX files are supported for resume parsing |
 | Remote collaboration | Use shared drives, Trello, and Replit for version control |
 
 ## 🎯 Expected Outcome

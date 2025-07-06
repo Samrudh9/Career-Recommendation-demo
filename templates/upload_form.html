@@ -140,12 +140,13 @@
   <div class="container">
     <h1>Upload Your Resume</h1>
     <p>Your resume helps us understand your qualifications, skills, and interests better.
-    Uploading it allows us to give personalized career guidance and recommend paths best suited to your profile.</p>
+    Uploading it allows us to give personalized career guidance and recommend paths best suited to your profile.
+    <strong>Note: Currently only DOCX files are supported.</strong></p>
 
     <form action="/resume" method="post" enctype="multipart/form-data">
       <div class="drop-zone" id="dropZone">
-        <label for="resume" id="resume-label">Click or drag your resume here to upload (DOC):</label>
-        <input type="file" id="resume" name="resume" accept=".pdf,.doc,.docx" />
+        <label for="resume" id="resume-label">Click or drag your resume here to upload (DOCX files only)</label>
+        <input type="file" id="resume" name="resume" accept=".docx" />
         <span id="file-name"></span>
         <span id="upload-success">✔ File Uploaded</span>
       </div>
