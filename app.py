@@ -191,28 +191,24 @@ def handle_resume_upload():
         for skill in skill_gaps[:3]
     ] if skill_gaps else []
 
+    # After processing analysis, determine predicted career
+    predicted_career = analysis.get('career', 'Not detected')
+    
+    # Prepare data for template
     return render_template(
         'result.html',
         mode="resume",
+        predicted_career=predicted_career,
         name=analysis.get('name', 'Not detected'),
         contact=analysis.get('contact', {}),
-        interests=analysis.get('interests', 'Not detected'),
-        education=analysis.get('education', ''),
-        certificates=analysis.get('certificates', ''),
-        experience=analysis.get('experience', ''),
-        technical_skills=analysis.get('technical_skills', ''),
-        projects=analysis.get('projects', ''),
-        resume_skills=analysis.get('skills', []),
-        skill_data=analysis.get('skill_data', {}),
-        skill_gaps=skill_gaps,
-        missing_sections=analysis.get('missing_sections', []),
-        qualification=', '.join(analysis.get('qualifications', [])),
-        quality_score=analysis.get('quality_score', 0),
+        education=analysis.get('education', 'Not detected'),
+        technical_skills=', '.join(analysis.get('skills', [])),
+        projects=analysis.get('projects', 'Not detected'),
+        certificates=analysis.get('certificates', 'Not detected'),
+        skill_gaps=analysis.get('skill_gaps', []),
         improvements=analysis.get('improvements', []),
+        quality_score=analysis.get('quality_score', 0),
         predicted_salary=predicted_salary,
-        predicted_career=career,  # Pass single predicted career
-        yt_links=yt_links,
-        book_links=book_links,
     )
 
 # ===== Feature Disabled =====

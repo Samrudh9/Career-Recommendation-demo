@@ -605,102 +605,46 @@ def generate_improvement_feedback(text, skills, experience, education, projects)
     return feedback[:8]  # Limit to most important feedback
 
 def analyze_resume(text, target_career=None):
-    # Initialize ML parser
-    parser = MLResumeParser()
-    parsed_data = parser.parse_resume(text)
-    
-    # Extract data using ML parser (primary method)
-    name = parsed_data.get("name", "Not detected")
-    contact = parsed_data.get("contact", {})
-    education = parsed_data.get("education", "Not detected")
-    experience = parsed_data.get("experience", "Not detected")
-    projects = parsed_data.get("projects", "Not detected")
-    certificates = parsed_data.get("certificates", "Not detected")
-    interests = parsed_data.get("interests", "Not detected")
-    
-    # Process skills from ML parser
-    skill_data = parsed_data.get("skills", {})
-    all_skills = []
-    for category, skills in skill_data.items():
-        all_skills.extend(skills)
-    
-    # If ML parser didn't find skills, fall back to basic extraction
-    if not all_skills:
-        all_skills = extract_skills(text)
-    
-    # Auto-detect career using both approaches
-    if not target_career:
-        # Use ML classifier first
-        career_ml, top_careers = predict_career_from_resume(text)
-        # Fallback to skill-based prediction if ML fails
-        if not career_ml:
-            target_career = predict_career_from_skills(all_skills)
-            top_careers = []
-        else:
-            target_career = career_ml
-    else:
-        # If target career provided, still get top matches
-        _, top_careers = predict_career_from_resume(text)
-    
-    # Set a default career if prediction returns None or a non-string
-    if not target_career or not isinstance(target_career, str):
-        target_career = "Software Engineer"  # Default
-        
-    technical_skills = ", ".join(all_skills)
+    """Simple rule-based resume analysis"""
+    # Extract name and contact
+    name, contact = extract_name_and_contact(text)
+    # Education
+    education = extract_section(text, 'Education') or extract_section(text, 'Academic') or 'Not detected'
+    # Experience
+    experience = extract_section(text, 'Experience') or extract_section(text, 'Work') or ''
+    # Skills
+    skills = extract_skills(text)
+    skill_data = {}
+    # Certifications
+    certificates = extract_certifications(text)
+    # Projects
+    projects = extract_section(text, 'Projects') or ''
+    # Qualifications
     qualifications = extract_qualification(text)
-    interests = parsed_data.get("interests", "") or extract_interests(text)
-    
-    # Use improved skill gap calculation
-    skill_gaps = calculate_skill_gaps(all_skills, target_career)
-    
-    # Section presence checks
-    text_lower = text.lower()
-    has_skills_section = any(re.search(r'\bskills?\b', line) for line in text.split('\n'))
-    has_projects_section = "project" in text_lower
-    missing_sections = []
-    
-    # Generate missing sections list
-    if not has_skills_section:
-        missing_sections.append("Skills")
-    if not has_projects_section:
-        missing_sections.append("Projects")
-    if "certification" not in text_lower and "certificate" not in text_lower:
-        missing_sections.append("Certifications")
-    if not any(x in text_lower for x in ["objective", "summary"]):
-        missing_sections.append("Objective/Summary")
-    if "extracurricular" not in text_lower and "activity" not in text_lower:
-        missing_sections.append("Extracurricular Activities")
-    
-    # Generate personalized feedback
-    feedback = generate_improvement_feedback(text, all_skills, experience, education, projects)
-    
-    # Quality score
-    quality_report = check_resume_quality(text, {
+    # Interests
+    interests = extract_interests(text)
+    # Career prediction via classifier
+    career = predict_career_from_resume(text)[0] or 'Not detected'
+    # Skill gaps
+    required_skills = get_career_required_skills(career)
+    skill_gaps = [s for s in required_skills if s.lower() not in [sk.lower() for sk in skills]]
+    # Quality feedback and score
+    quality_report = check_resume_quality(text)
+    improvements = generate_improvement_feedback(text, skills, experience, education, projects)
+    # Prepare return
+    return {
         'name': name,
         'contact': contact,
         'education': education,
         'experience': experience,
-        'skills': all_skills,
+        'skills': skills,
         'skill_data': skill_data,
+        'certificates': certificates,
         'projects': projects,
-        'certificates': certificates
-    })
-    
-    return {
-        "name": name,
-        "contact": contact,
-        "education": education,
-        "certificates": certificates,
-        "experience": experience,
-        "technical_skills": technical_skills,
-        "projects": projects,
-        "missing_sections": missing_sections,
-        "skill_gaps": skill_gaps,
-        "improvements": feedback,
-        "quality_score": quality_report["score"],
-        "qualifications": qualifications,
-        "skills": all_skills,
-        "skill_data": skill_data,
-        "interests": interests,
-        "career": target_career,
+        'qualifications': qualifications,
+        'interests': interests,
+        'career': career,
+        'skill_gaps': skill_gaps,
+        'improvements': improvements,
+        'quality_score': quality_report.get('score', 0),
     }
