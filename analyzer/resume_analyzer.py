@@ -232,13 +232,14 @@ def extract_certifications(text):
 
 def extract_skills(text):
     """Extract skills from resume text using comprehensive skill database"""
-    
-    # Get all skills from skills_career_map.csv
+    # Build set of all possible skills from skills_map_list
     all_possible_skills = set()
-    for idx, row in skills_map_df.iterrows():
-        skill_value = str(row['Skill']) if not pd.isna(row['Skill']) else ""
-        skills_list = [s.strip() for s in skill_value.split(',')]
-        all_possible_skills.update([s.lower() for s in skills_list if s.strip()])
+    for row in skills_map_list:
+        skill_value = str(row.get('Skill',''))
+        for s in skill_value.split(','):
+            s = s.strip().lower()
+            if s:
+                all_possible_skills.add(s)
     
     # Additional comprehensive skill list
     additional_skills = [
@@ -276,38 +277,10 @@ def extract_skills(text):
     
     all_possible_skills.update(additional_skills)
     
-    # Find skills in text
-    found_skills = []
+    # Find skills in text (case-insensitive match)
     text_lower = text.lower()
-    
-    # Replace common variations for better matching
-    text_normalized = text_lower
-    text_normalized = re.sub(r'\bnode\.?js\b', 'nodejs', text_normalized)
-    text_normalized = re.sub(r'\bc\+\+\b', 'cpp', text_normalized)
-    text_normalized = re.sub(r'\bc#\b', 'csharp', text_normalized)
-    
-    for skill in all_possible_skills:
-        skill_normalized = skill.lower()
-        skill_normalized = re.sub(r'\bnode\.?js\b', 'nodejs', skill_normalized)
-        skill_normalized = re.sub(r'\bc\+\+\b', 'cpp', skill_normalized)
-        skill_normalized = re.sub(r'\bc#\b', 'csharp', skill_normalized)
-        
-        # Create flexible patterns for skill matching
-        patterns = [
-            rf'\b{re.escape(skill_normalized)}\b',
-            rf'\b{re.escape(skill)}\b',
-            rf'{re.escape(skill_normalized)}',
-            rf'{re.escape(skill)}'
-        ]
-        
-        for pattern in patterns:
-            if re.search(pattern, text_normalized):
-                # Add original skill name to found skills
-                found_skills.append(skill)
-                break
-    
-    # Remove duplicates and return
-    return list(set(found_skills))
+    found_skills = [skill for skill in all_possible_skills if skill and skill in text_lower]
+    return found_skills
 
 def extract_skills_comprehensive(text):
     """Extract skills using comprehensive pattern matching based on skills_career_map.csv"""
