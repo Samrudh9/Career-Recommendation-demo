@@ -4,6 +4,8 @@ import os
 from .quality_checker import check_resume_quality
 from .ml_resume_parser import MLResumeParser
 from .ml_resume_classifier import resume_classifier
+from .ml_resume_parser_enhanced import MLResumeParser
+
 
 # Replace absolute Windows paths with relative paths
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
