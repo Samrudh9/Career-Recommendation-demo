@@ -17,6 +17,8 @@ from analyzer.resume_parser import extract_text_from_file
 from analyzer.resume_analyzer import analyze_resume
 from analyzer.quality_checker import check_resume_quality
 from analyzer.salary_estimator import salary_est
+from analyzer.resume_parser import extract_text_from_file
+from analyzer.resume_analyzer import analyze_resume
 
 app = Flask(__name__)
 
@@ -143,78 +145,45 @@ def upload():
 
 @app.route('/resume', methods=['POST'])
 def handle_resume_upload():
-    resume = request.files['resume']
-
-    if not resume or resume.filename == '':
+    # 1) Get the uploaded file
+    uploaded = request.files.get('resume')
+    if not uploaded or uploaded.filename == '':
         return "❌ No resume uploaded", 400
 
-    resume_file = request.files['resume']
-    tmp_file = TemporaryFile()
-    tmp_file.write(resume_file.read())
+    # 2) Read it into a temp buffer
+    tmp = TemporaryFile()
+    tmp.write(uploaded.read())
+    tmp.seek(0)
 
-    # Extract text from the uploaded resume
-    extracted_text = extract_text_from_file(tmp_file, resume_file.filename)
-    
-    # Check if extraction failed with an error
-    if isinstance(extracted_text, str) and extracted_text.startswith("ERROR:"):
-        return f"❌ {extracted_text[7:]}", 400
-    
-    # Extract skills from resume text
-    analysis = analyze_resume(extracted_text)
-    
-    # Get detected skills and predicted career
-    skills_text = ", ".join(analysis.get('skills', []))
-    career = analysis.get('career', "Software Developer")  # Default if no career detected
-    
-    # Fix qualification format - convert from list to string
-    qualifications = analysis.get('qualifications', ['Bachelors'])
-    qualification = qualifications[0] if qualifications else 'Bachelors'  # Take first or default
-    
-    # Predict salary - now with qualification as a string
-    try:
-        salary_value, _ = salary_est.estimate(
-            skills=skills_text,
-            career=str(career),  # Force string type
-            qualification=str(qualification)  # Force string type
-        )
-        predicted_salary = f"₹{salary_value:,}/year"
-    except Exception as e:
-        print(f"Salary prediction failed: {e}")
-        # Fallback to a default salary
-        predicted_salary = f"₹750,000/year (estimated)"
-    
-    skill_gaps = analysis.get('skill_gaps', [])
-    
-    # Add resource recommendations
-    yt_links = [
-        f"https://www.youtube.com/results?search_query={skill}+tutorial" 
-        for skill in skill_gaps[:3]
-    ] if skill_gaps else []
-    
-    book_links = [
-        f"Learn {skill.capitalize()}: The Complete Guide" 
-        for skill in skill_gaps[:3]
-    ] if skill_gaps else []
+    # 3) Extract raw text (DOCX)
+    text = extract_text_from_file(tmp, uploaded.filename)
+    if isinstance(text, str) and text.startswith("ERROR:"):
+        return f"❌ {text[7:]}", 400
 
-    # After processing analysis, determine predicted career
-    predicted_career = analysis.get('career', 'Not detected')
-    
-    # Prepare data for template
-    return render_template(
-        'result.html',
+    # 4) Analyze with our new integrated analyzer
+    result = analyze_resume(text)
+
+    # 5) Build a nice contact string
+    contact = result.get('contact', {})
+    contact_display = f"{contact.get('email','')} | {contact.get('phone','')}"
+
+    # 6) Render the template with *all* of our fields
+    return render_template('result.html',
         mode="resume",
-        predicted_career=predicted_career,
-        name=analysis.get('name', 'Not detected'),
-        contact=analysis.get('contact', {}),
-        education=analysis.get('education', 'Not detected'),
-        technical_skills=', '.join(analysis.get('skills', [])),
-        projects=analysis.get('projects', 'Not detected'),
-        certificates=analysis.get('certificates', 'Not detected'),
-        skill_gaps=analysis.get('skill_gaps', []),
-        improvements=analysis.get('improvements', []),
-        quality_score=analysis.get('quality_score', 0),
-        predicted_salary=predicted_salary,
+        name=result['name'],
+        contact=contact_display,
+        education=result['education'],
+        experience=result['experience'],
+        summary=result['summary'],
+        technical_skills=', '.join(result['skills']),
+        predicted_career=result['career'],
+        quality_score=result['quality_score'],
+        skill_gaps=result['skill_gaps'],
+        improvements=result['improvements'],
+        certificates=result['certificates'],
+        projects=result['projects']
     )
+
 
 # ===== Enhanced Resume Analysis Route =====
 @app.route('/analyze_resume', methods=['POST'])
@@ -278,22 +247,6 @@ def resume_analysis():
     
     except Exception as e:
         return jsonify({'error': f'An error occurred: {str(e)}'}), 500
-
-# ===== Feature Disabled =====
-@app.route('/multi-upload')
-def multi_upload():
-    # Redirect to single resume upload with a message
-    # Use flash if available, otherwise redirect to regular upload
-    try:
-        flash("Multiple resume analysis is currently disabled. Please upload one resume at a time.", "info")
-        return redirect(url_for('upload'))
-    except:
-        return redirect('/upload')
-
-@app.route('/multi-resume', methods=['POST'])
-def handle_multi_resume_upload():
-    # Return clear message that feature is disabled
-    return "Multi-resume analysis is currently disabled. Please use the single resume upload feature instead.", 400
 
 # ===== Sanitize Data Function =====
 def sanitize_data(data):
