@@ -166,8 +166,23 @@ def handle_resume_upload():
     # 5) Build a nice contact string
     contact = result.get('contact', {})
     contact_display = f"{contact.get('email','')} | {contact.get('phone','')}"
+    
+    # 6) Format career prediction results if needed
+    career_prediction = result['career']
+    if isinstance(career_prediction, dict):
+        # Make sure confidence values are properly formatted as floats
+        if 'confidence' in career_prediction and hasattr(career_prediction['confidence'], 'item'):
+            career_prediction['confidence'] = float(career_prediction['confidence'])
+        
+        if 'top_careers' in career_prediction:
+            top_careers = []
+            for career, conf in career_prediction['top_careers']:
+                if hasattr(conf, 'item'):
+                    conf = float(conf)
+                top_careers.append((career, conf))
+            career_prediction['top_careers'] = top_careers
 
-    # 6) Render the template with *all* of our fields
+    # 7) Render the template with *all* of our fields
     return render_template('result.html',
         mode="resume",
         name=result['name'],
@@ -176,12 +191,14 @@ def handle_resume_upload():
         experience=result['experience'],
         summary=result['summary'],
         technical_skills=', '.join(result['skills']),
-        predicted_career=result['career'],
+        predicted_career=career_prediction,
         quality_score=result['quality_score'],
         skill_gaps=result['skill_gaps'],
         improvements=result['improvements'],
         certificates=result['certificates'],
-        projects=result['projects']
+        projects=result['projects'],
+        # Add estimated salary if available
+       predicted_salary = f"₹{salary_est:,}/year"
     )
 
 

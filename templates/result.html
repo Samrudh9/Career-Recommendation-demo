@@ -185,7 +185,27 @@
 
     <div class="section">
         <h2>💡 Career Recommendation</h2>
-        <p><span class="highlight">Suggested Career:</span> {{ predicted_career }}</p>
+        {% if predicted_career is mapping %}
+            <p><span class="highlight">Suggested Career:</span> {{ predicted_career.predicted_career }}</p>
+            {% if predicted_career.confidence %}
+            <p><span class="highlight">Confidence:</span> {{ "%.1f"|format(predicted_career.confidence) }}%</p>
+            {% endif %}
+            
+            {% if predicted_career.top_careers %}
+            <div class="career-alternatives">
+                <h4>Alternative Career Paths:</h4>
+                <ul>
+                {% for career, confidence in predicted_career.top_careers %}
+                    {% if loop.index > 1 %}  <!-- Skip the first one as it's already shown above -->
+                    <li>{{ career }} ({{ "%.1f"|format(confidence) }}%)</li>
+                    {% endif %}
+                {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        {% else %}
+            <p><span class="highlight">Suggested Career:</span> {{ predicted_career }}</p>
+        {% endif %}
     </div>
 
     <div class="section">

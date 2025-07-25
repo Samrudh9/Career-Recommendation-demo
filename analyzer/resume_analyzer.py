@@ -24,16 +24,54 @@ def analyze_resume(text):
 
     # Predict the career field
     predicted_career = classifier.predict(text)
-
-    # Extract skills from structured data
-    skills_data = parsed.get("skills", {})
-    detected_skills = []
-    for category, skills in skills_data.items():
-        detected_skills.extend(skills)
     
-    detected_skills_set = set(detected_skills)
+    # Format career prediction for better display
+    career_data = {}
+    if isinstance(predicted_career, dict):
+        career_data = {
+            'predicted_career': predicted_career.get('predicted_career', ''),
+            'confidence': float(predicted_career.get('confidence', 0)) * 100 if hasattr(predicted_career.get('confidence', 0), 'item') else predicted_career.get('confidence', 0) * 100,
+        }
+        
+        # Format top careers if available
+        if 'top_careers' in predicted_career:
+            formatted_top_careers = []
+            for career, conf in predicted_career['top_careers']:
+                # Convert numpy values to Python native types
+                if hasattr(conf, 'item'):
+                    conf = float(conf) * 100  # Convert to percentage
+                else:
+                    conf = float(conf) * 100
+                formatted_top_careers.append((career, conf))
+            career_data['top_careers'] = formatted_top_careers
+    else:
+        career_data = predicted_career  # Keep as string if it's already a string
+    
+    # Extract career name for summary
+    if isinstance(predicted_career, dict):
+        career_name = predicted_career.get('predicted_career', '')
+    else:
+        career_name = predicted_career
+    
+    # Extract known skills from resume
+    detected_skills = set()  # Initialize as a set
+    
+    # Store the original structured skills data
+    skills_data = parsed.get("skills", {})
+    
+    # Handle different formats of skills data
+    if isinstance(skills_data, list):
+        # Handle list of skills
+        for skill in skills_data:
+            detected_skills.add(skill)
+    elif isinstance(skills_data, dict):
+        # Handle the case where skills is a dictionary with categories
+        for category, skills in skills_data.items():
+            if isinstance(skills, list):
+                detected_skills.update(skills)  # Now update() works because detected_skills is a set
+    
     expected_skills = set(skills_map_list)
-    skill_gaps = list(expected_skills - detected_skills_set)[:5]
+    skill_gaps = list(expected_skills - detected_skills)[:5]
 
     # Enhanced improvement tips based on structured data
     improvements = []
@@ -108,9 +146,9 @@ def analyze_resume(text):
         "contact": parsed.get("contact", {}),
         "education": "; ".join(qualification_display) if qualification_display else "Not detected",
         "experience": "; ".join(experience_display) if experience_display else "Not detected",
-        "skills": detected_skills,
-        "summary": "Professional with experience in " + predicted_career if predicted_career else "Not detected",
-        "career": predicted_career,
+        "skills": list(detected_skills),  # Convert set back to list
+        "summary": "Professional with experience in " + career_name if career_name else "Not detected",
+        "career": career_data,  # Now using our formatted career data
         "skill_gaps": skill_gaps,
         "improvements": improvements,
         "quality_score": quality_score,
@@ -120,5 +158,5 @@ def analyze_resume(text):
         "structured_qualification": qualification,
         "structured_experience": work_experience,
         "structured_projects": projects,
-        "structured_skills": skills_data
+        "structured_skills": skills_data  # Now skills_data is properly defined
     }
