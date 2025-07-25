@@ -11,12 +11,13 @@ class MLResumeParser:
         ]
 
     def parse_resume(self, text):
-        name = self._extract_name(text)
+        name = "Not provided"  # Name extraction disabled
         contact = self._extract_contact_info(text)
         education = self._extract_education(text)
         experience = self._extract_experience(text)
         summary = self._extract_summary(text)
         skills = self._extract_skills(text)
+        projects = self._extract_projects(text) if hasattr(self, "_extract_projects") else "Not detected"
 
         return {
             "name": name,
@@ -24,15 +25,9 @@ class MLResumeParser:
             "education": education,
             "experience": experience,
             "summary": summary,
-            "skills": skills
+            "skills": skills,
+            "projects": projects
         }
-
-    def _extract_name(self, text):
-        lines = text.strip().split('\n')
-        for line in lines[:10]:
-            if line and len(line.split()) <= 4 and not re.search(r'\d', line) and '@' not in line:
-                return line.strip()
-        return "Not detected"
 
     def _extract_contact_info(self, text):
         phone_match = re.search(r'(\+?\d{1,3}[-.\s]?)?(\(?\d{3,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4})', text)
@@ -65,6 +60,11 @@ class MLResumeParser:
         for skill in self.known_skills:
             if skill in lower_text:
                 found.add(skill)
+            else:
+                match = get_close_matches(skill.lower(), lower_text.split(), n=1, cutoff=0.85)
+                if match:
+                    found.add(skill)
+        return list(found) or ["Not detected"]
             else:
                 match = get_close_matches(skill.lower(), lower_text.split(), n=1, cutoff=0.85)
                 if match:

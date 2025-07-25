@@ -41,17 +41,6 @@ SKILL_CATEGORIES = {
 }
 
 # Compiled regex patterns for better performance
-# Name validation patterns
-RE_WHITESPACE = re.compile(r'\s+')
-RE_VALID_NAME_CHARS = re.compile(r'^[a-zA-Z\'\.-]+$')
-
-# Name extraction patterns
-RE_IMAGE_MEDIA = re.compile(r'\b(image|media|photo|picture|img)\b', re.IGNORECASE)
-RE_NAME_PATTERN1 = re.compile(r'^\s*([A-Z][a-z]+(?:\s+[A-Z][a-z.]*)+)\s*$')
-RE_NAME_PATTERN2 = re.compile(r'^(?:Mr\.|Ms\.|Mrs\.|Dr\.|Prof\.)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z.]*)+)\s*$')
-RE_NAME_PATTERN3 = re.compile(r'(?:name|candidate)[:\s]*([A-Z][a-z]+(?:\s+[A-Z][a-z.]*)+)', re.IGNORECASE)
-RE_NAME_PATTERN4 = re.compile(r'^\s*([A-Z][a-z]+(?:\s+[A-Z][a-z.]*){1,3})\s*$')
-
 # Job title indicators
 RE_JOB_INDICATORS = [
     re.compile(r'#\s*\w+'),
@@ -197,61 +186,6 @@ def extract_all_text_blocks(doc: Any) -> List[str]:
     
     return text_blocks
 
-def is_valid_name(text: str) -> bool:
-    """
-    Validate if text looks like a person's name with strict criteria.
-    """
-    if not text:
-        return False
-    
-    # Remove extra whitespace and normalize
-    text = RE_WHITESPACE.sub(' ', text.strip())
-    
-    # Split into words
-    words = text.split()
-    
-    # Must have 2-4 words (first, last, optional middle/initial)
-    if len(words) < 2 or len(words) > 4:
-        return False
-    
-    # Section header blacklist
-    blacklist = {
-        'resume', 'cv', 'curriculum vitae', 'phone', 'mobile', 'email', 'e-mail',
-        'address', 'linkedin', 'github', 'objective', 'summary', 'profile', 'contact',
-        'education', 'experience', 'skills', 'projects', 'certifications', 'certificates',
-        'references', 'awards', 'achievements', 'publications', 'languages', 'interests',
-        'hobbies', 'volunteer', 'activities', 'professional', 'personal', 'employment',
-        'work', 'career', 'qualifications', 'competencies', 'expertise', 'background',
-        'training', 'courses', 'coursework', 'portfolio', 'about', 'me', 'myself'
-    }
-    
-    # Check against blacklist (case-insensitive)
-    if any(word.lower() in blacklist for word in words):
-        return False
-    
-    # Validate each word
-    for word in words:
-        # Remove trailing punctuation for validation
-        clean_word = word.rstrip('.,;:')
-        
-        # Must contain only letters, hyphens, apostrophes, periods
-        if not RE_VALID_NAME_CHARS.match(clean_word):
-            return False
-        
-        # Must start with a letter
-        if not clean_word[0].isalpha():
-            return False
-        
-        # Avoid all-caps words (likely section headers)
-        if len(clean_word) > 2 and clean_word.isupper():
-            return False
-        
-        # Avoid single characters (unless it's an initial with period)
-        if len(clean_word) == 1 and not word.endswith('.'):
-            return False
-    
-    return True
-
 def contains_job_title_indicator(text: str) -> bool:
     """
     Check if text contains job title indicators that often appear near names.
@@ -266,79 +200,18 @@ def contains_job_title_indicator(text: str) -> bool:
 
 def extract_name_from_docx_robust(doc: Any) -> str:
     """
-    Robust name extraction for complex DOCX layouts using multiple strategies.
-    Looks for the largest/boldest text in first 1000 characters and applies patterns.
+    Placeholder function that no longer extracts names.
+    Returns a default placeholder value.
     """
-    # Extract all text blocks
-    text_blocks = extract_all_text_blocks(doc)
-    
-    # Limit to first 15 blocks (first 1/4 of document typically)
-    candidate_blocks = text_blocks[:15]
-    
-    # Use compiled regex patterns for name extraction
-    patterns = [RE_NAME_PATTERN1, RE_NAME_PATTERN2, RE_NAME_PATTERN3, RE_NAME_PATTERN4]
-    
-    candidates = []
-    
-    # Strategy 1: Look for standalone names in early blocks
-    for i, block in enumerate(candidate_blocks):
-        # Skip blocks that look like image/media references
-        if RE_IMAGE_MEDIA.search(block):
-            continue
-        
-        # Skip blocks that are too long (names are typically short)
-        if len(block) > 50:
-            continue
-            
-        # Try each pattern
-        for pattern in patterns:
-            match = pattern.search(block)
-            if match:
-                # Extract the name part
-                if len(match.groups()) > 0:
-                    candidate = match.group(1).strip()
-                else:
-                    candidate = match.group(0).strip()
-                
-                # Validate the candidate
-                if is_valid_name(candidate):
-                    # Calculate scores for ranking
-                    # Position score (earlier is better)
-                    position_score = max(0, 15 - i)
-                    
-                    # Length score (prefer 2-3 word names)
-                    words = candidate.split()
-                    length_score = 5 if 2 <= len(words) <= 3 else 3
-                    
-                    # Capitalization score (prefer properly capitalized names)
-                    cap_score = 5 if all(w[0].isupper() for w in words) else 0
-                    
-                    # Context score (check if next blocks contain job titles/contact info)
-                    context_score = 0
-                    for j in range(i + 1, min(i + 3, len(candidate_blocks))):
-                        if contains_contact_or_title_indicator(candidate_blocks[j]):
-                            context_score += 3
-                            break
-                    
-                    # Calculate total score
-                    total_score = position_score + length_score + cap_score + context_score
-                    candidates.append((candidate, total_score, i))
-    
-    # Strategy 2: Check for font attributes if available (docx only)
-    # This would check for large/bold text but requires paragraph runs analysis
-    
-    # Sort candidates by score (highest first)
-    candidates.sort(key=lambda x: x[1], reverse=True)
-    
-    # Return the best candidate, properly formatted
-    if candidates:
-        best_candidate = candidates[0][0]
-        # Ensure proper title case formatting
-        return ' '.join(word.capitalize() for word in best_candidate.split())
-    
-    return "Not detected"
+    return "Not provided"
 
-def contains_contact_or_title_indicator(text: str) -> bool:
+def is_valid_name(text: str) -> bool:
+    """
+    Placeholder function that always returns False.
+    """
+    return False
+
+def extract_contact_or_title_indicator(text: str) -> bool:
     """
     Check if text contains contact info or job title indicators
     that often appear near names.
@@ -899,51 +772,62 @@ def clean_text(text: str) -> str:
 def parse_resume(text: str) -> Dict[str, Any]:
     """
     Main function to parse resume text into structured information.
+    Name extraction is disabled, but other fields are detected.
     """
-    # Clean the text
     text = clean_text(text)
-    
-    # Extract name (for plain text, not docx)
-    name = "Not detected"  # Will be properly extracted for DOCX files
-    
-    # Find name in first few lines
-    lines = text.split('\n')
-    for i, line in enumerate(lines[:5]):
-        if len(line) < 50 and is_valid_name(line):
-            name = line
-            break
-    
-    # Extract contact information
+    name = "Not provided"  # Name extraction disabled
+
+    # Contact info
     contact = extract_contact_info(text)
-    
-    # Extract education
+
+    # Education
     education = extract_education_details(text)
-    
-    # Extract skills
+
+    # Experience (add detection)
+    experience_section = extract_section(text, "experience") or extract_section(text, "work") or ""
+    experience = []
+    if experience_section:
+        # Simple split by lines, filter out empty and section headers
+        for line in experience_section.split('\n'):
+            l = line.strip()
+            if l and not RE_SECTION_HEADER.match(l):
+                experience.append(l)
+    if not experience:
+        # Fallback: scan for lines with keywords
+        keywords = ["intern", "developer", "engineer", "analyst", "manager", "experience"]
+        for line in text.split('\n'):
+            if any(k in line.lower() for k in keywords):
+                experience.append(line.strip())
+    if not experience:
+        experience = "Not detected"
+
+    # Skills
     skills = extract_skills_categorized(text)
-    
-    # Extract projects
+
+    # Projects
     projects = extract_projects(text)
-    
-    # Extract certifications
+
+    # Certificates
     certificates_section = extract_section(text, "certifications") or extract_section(text, "certificates") or ""
     certificates = []
     if certificates_section:
-        # Split by newlines and bullet points
         for line in re.split(r'\n+|(?:^|\n)\s*[•\-*]\s*', certificates_section):
             if line.strip():
                 certificates.append(line.strip())
-    
-    # Build final result
+
+    # Summary (optional, fallback to Not detected)
+    summary = "Not detected"
+
     result = {
         "name": name,
         "contact": contact,
-        "education": education,
+        "education": education if education else "Not detected",
+        "experience": experience,
         "skills": skills,
         "projects": projects,
-        "certificates": certificates
+        "certificates": certificates,
+        "summary": summary
     }
-    
     return result
 
 def extract_text_forensic(docx_path: str) -> List[str]:
@@ -999,77 +883,10 @@ def extract_text_forensic(docx_path: str) -> List[str]:
 
 def extract_name_military_grade(lines: List[str]) -> Tuple[str, float]:
     """
-    Name detection with 4-layer validation:
-    1. Positional scan (first 3 lines)
-    2. Regex patterns (advanced name recognition)
-    3. NLP validation (if available)
-    4. Contextual blacklist check
-    
-    Returns: (name, confidence_score 0-1)
+    Placeholder function that no longer extracts names.
+    Returns a default placeholder value with zero confidence.
     """
-    import unicodedata
-    try:
-        import spacy
-        nlp = spacy.load("en_core_web_sm")
-        NLP_AVAILABLE = True
-    except:
-        NLP_AVAILABLE = False
-
-    blacklist = {"resume", "cv", "curriculum vitae", "contact", "phone", "email", 
-                "github", "summary", "objective", "profile", "experience"}
-                
-    patterns = [
-        re.compile(r'^\s*[A-Z][a-z]+(?:\s+[A-Z][a-z.]*){1,3}\s*$'),  # "Samrudh S Shetty"
-        re.compile(r'^\*{0,2}([A-Z][a-z]+(?:\s+[A-Z][a-z]*)+)\*{0,2}$'),  # "**John Doe**"
-        re.compile(r'^(?:Mr\.|Ms\.|Mrs\.|Dr\.|Prof\.)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z.]*)+)\s*$'),  # "Dr. Jane Smith"
-        re.compile(r'(?:name|candidate)[:\s]*([A-Z][a-z]+(?:\s+[A-Z][a-z.]*)+)', re.IGNORECASE),  # "Name: John Doe"
-    ]
-
-    # 1. Positional scan (first 3 lines)
-    candidates = []
-    for idx, line in enumerate(lines[:5]):
-        line_clean = line.strip()
-        if not line_clean or any(b in line_clean.lower() for b in blacklist):
-            continue
-            
-        # 2. Regex patterns
-        for pat in patterns:
-            m = pat.match(line_clean)
-            if m:
-                name = m.group(1) if m.lastindex else line_clean
-                # Unicode normalization
-                name = unicodedata.normalize("NFKC", name)
-                # Blacklist check
-                if any(b in name.lower() for b in blacklist):
-                    continue
-                    
-                # NLP validation (if available)
-                nlp_score = 0
-                if NLP_AVAILABLE:
-                    doc = nlp(name)
-                    nlp_score = 0.1 if any(ent.label_ == "PERSON" for ent in doc.ents) else 0
-                    
-                # Confidence scoring
-                confidence = 0.9 if idx == 0 else 0.8
-                confidence += nlp_score
-                
-                # Handle special cases
-                if re.search(r"\b(Jr\.|Sr\.|II|III|IV)\b", name) or re.search(r"[^\x00-\x7F]", name):
-                    confidence += 0.05
-                    
-                confidence = min(confidence, 1.0)
-                candidates.append((name, confidence))
-        
-        # Fallback: If line looks like a name (capitalized, 2-4 words)
-        if not candidates and re.match(r"^[A-Z][a-z]+(?:\s+[A-Z][a-z.]*){1,3}$", line_clean):
-            candidates.append((line_clean, 0.7))
-    
-    # Return best candidate
-    if candidates:
-        candidates.sort(key=lambda x: x[1], reverse=True)
-        return candidates[0]
-        
-    return ("Not detected", 0.0)
+    return ("Not provided", 0.0)
 
 def extract_contact_zero_false_positives(lines: List[str]) -> Dict[str, Dict[str, Union[str, float]]]:
     """
@@ -1442,7 +1259,8 @@ def parse_resume_atomic(docx_path: str) -> ResumeAnalysis:
     Returns structured ResumeAnalysis with confidence scores and warnings.
     """
     lines = extract_text_forensic(docx_path)
-    name, name_conf = extract_name_military_grade(lines)
+    name = "Not provided"  # No longer extract name
+    name_conf = 0.0
     contact = extract_contact_zero_false_positives(lines)
     education = extract_education_context_aware(lines)
     skills = extract_skills_precision_mapped(lines)
@@ -1450,14 +1268,6 @@ def parse_resume_atomic(docx_path: str) -> ResumeAnalysis:
     
     # Generate warnings
     warnings = []
-    
-    # Low confidence warnings
-    if name_conf < 0.7:
-        warnings.append("Low confidence in name extraction.")
-    
-    for k, v in contact.items():
-        if v["confidence"] < 0.7 and v["value"]:
-            warnings.append(f"Low confidence in {k} extraction: {v['value']}")
     
     # Handle double bracket placeholders
     db_pattern = re.compile(r"\[\[(.*?)\]\]")
