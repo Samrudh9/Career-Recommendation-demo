@@ -11,13 +11,33 @@ class MLResumeParser:
         ]
 
     def parse_resume(self, text):
-        name = "Not provided"  # Name extraction disabled
-        contact = self._extract_contact_info(text)
-        education = self._extract_education(text)
-        experience = self._extract_experience(text)
+        # Use the enhanced structured parsing
+        from .resume_parser import parse_resume_structured
+        
+        structured_data = parse_resume_structured(text)
+        
+        # Convert to the expected format for backward compatibility
+        name = structured_data.get("name", "Not provided")
+        contact = structured_data.get("contact", {})
+        
+        # Format qualification
+        qualification = structured_data.get("qualification", [])
+        education = "; ".join([f"{q.get('degree', '')} in {q.get('major', '')}" for q in qualification]) if qualification else "Not detected"
+        
+        # Format experience
+        work_experience = structured_data.get("work_experience", [])
+        experience = "; ".join([f"{exp.get('job_title', '')} at {exp.get('company', '')}" for exp in work_experience]) if work_experience else "Not detected"
+        
+        # Extract summary from first few lines
         summary = self._extract_summary(text)
-        skills = self._extract_skills(text)
-        projects = self._extract_projects(text) if hasattr(self, "_extract_projects") else "Not detected"
+        
+        # Flatten skills from structured format
+        skills_data = structured_data.get("skills", {})
+        all_skills = []
+        for category, skills in skills_data.items():
+            all_skills.extend(skills)
+        
+        skills = all_skills if all_skills else ["Not detected"]
 
         return {
             "name": name,
@@ -26,8 +46,16 @@ class MLResumeParser:
             "experience": experience,
             "summary": summary,
             "skills": skills,
-            "projects": projects
+            # Add structured data for advanced processing
+            "structured_data": structured_data
         }
+
+    def _extract_name(self, text):
+        """
+        Name extraction removed as requested.
+        Returns a placeholder value.
+        """
+        return "Not provided"
 
     def _extract_contact_info(self, text):
         phone_match = re.search(r'(\+?\d{1,3}[-.\s]?)?(\(?\d{3,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4})', text)
@@ -65,21 +93,3 @@ class MLResumeParser:
                 if match:
                     found.add(skill)
         return list(found) or ["Not detected"]
-    
-    def _extract_projects(self, text):
-        """Extract projects from resume text"""
-        proj_keywords = ['project', 'developed', 'created', 'built', 'implemented', 'designed']
-        proj_lines = []
-        
-        # Look for project section
-        sections = text.lower().split('\n\n')
-        for section in sections:
-            if any(section.strip().startswith(kw) for kw in ['project', 'projects', 'personal project']):
-                return section.strip()
-        
-        # Fallback: look for lines with project keywords
-        for line in text.lower().split('\n'):
-            if any(kw in line for kw in proj_keywords):
-                proj_lines.append(line)
-                
-        return ' '.join(proj_lines[:5]) if proj_lines else "Not detected"

@@ -44,16 +44,41 @@ class MLResumeParser:
         
     def parse_resume(self, text):
         """Main parsing function that extracts all information from resume text"""
+        
+        # Clean the text
         text = self._clean_text(text)
-        name = "Not provided"  # Name extraction disabled
+        print(f"DEBUG: Cleaned text length: {len(text)}")
+        print(f"DEBUG: First 200 chars: {text[:200]}")
+        
+        # Use structured parsing from resume_parser module
+        from .resume_parser import parse_resume_structured
+        structured_data = parse_resume_structured(text)
+        
+        # Extract basic information
+        name = self._extract_name(text)
+        print(f"DEBUG: Extracted name: {name}")
+        
         contact = self._extract_contact_info(text)
-        sections = self._split_into_sections(text)
-        education = self._extract_education_detailed(sections.get('education', ''), text)
-        experience = self._extract_experience_detailed(sections.get('experience', ''), text)
-        projects = self._extract_projects_detailed(sections.get('projects', ''), text)
-        certificates = self._extract_certificates_detailed(sections.get('certificates', ''), text)
-        skills_data = self._categorize_skills(text)
+        print(f"DEBUG: Extracted contact: {contact}")
+        
+        # Use structured data for better results
+        qualification = structured_data.get("qualification", [])
+        work_experience = structured_data.get("work_experience", [])
+        projects = structured_data.get("projects", [])
+        skills_data = structured_data.get("skills", {})
+        
+        # Format for backward compatibility
+        education = self._format_qualification(qualification)
+        experience = self._format_experience(work_experience)
+        formatted_projects = self._format_projects(projects)
+        certificates = self._extract_certificates_detailed(self._split_into_sections(text).get('certificates', ''), text)
         interests = self._extract_interests(text)
+        
+        print(f"DEBUG: Structured qualification: {qualification}")
+        print(f"DEBUG: Structured experience: {work_experience}")
+        print(f"DEBUG: Structured projects: {projects}")
+        print(f"DEBUG: Structured skills: {skills_data}")
+
         return {
             "name": name,
             "contact": contact,
@@ -61,10 +86,76 @@ class MLResumeParser:
             "experience": experience,
             "skills": skills_data,
             "certificates": certificates,
-            "projects": projects,
-            "interests": interests
+            "projects": formatted_projects,
+            "interests": interests,
+            # Add structured data
+            "structured_qualification": qualification,
+            "structured_experience": work_experience,
+            "structured_projects": projects
         }
 
+    def _format_qualification(self, qualification_list):
+        """Format qualification list for display"""
+        if not qualification_list:
+            return "Not detected"
+        
+        formatted = []
+        for qual in qualification_list:
+            parts = []
+            if qual.get("degree"):
+                parts.append(qual["degree"])
+            if qual.get("major"):
+                parts.append(f"in {qual['major']}")
+            if qual.get("institution") and qual["institution"] != "Not specified":
+                parts.append(f"from {qual['institution']}")
+            
+            if parts:
+                formatted.append(" ".join(parts))
+        
+        return "; ".join(formatted) if formatted else "Not detected"
+
+    def _format_experience(self, experience_list):
+        """Format experience list for display"""
+        if not experience_list:
+            return "Not detected"
+        
+        formatted = []
+        for exp in experience_list:
+            parts = []
+            if exp.get("job_title"):
+                parts.append(exp["job_title"])
+            if exp.get("company"):
+                parts.append(f"at {exp['company']}")
+            if exp.get("duration") and exp["duration"] != "Duration not specified":
+                parts.append(f"({exp['duration']})")
+            
+            if parts:
+                formatted.append(" ".join(parts))
+        
+        return "; ".join(formatted) if formatted else "Not detected"
+
+    def _format_projects(self, projects_list):
+        """Format projects list for display"""
+        if not projects_list:
+            return "Not detected"
+        
+        formatted = []
+        for proj in projects_list:
+            parts = []
+            if proj.get("title"):
+                parts.append(proj["title"])
+            if proj.get("description"):
+                # Truncate long descriptions
+                desc = proj["description"][:100] + "..." if len(proj["description"]) > 100 else proj["description"]
+                parts.append(f"- {desc}")
+            if proj.get("technologies"):
+                parts.append(f"[{', '.join(proj['technologies'][:3])}]")
+            
+            if parts:
+                formatted.append(" ".join(parts))
+        
+        return "; ".join(formatted) if formatted else "Not detected"
+    
     def _clean_text(self, text):
         """Clean and normalize the text"""
         # Remove excessive whitespace
@@ -74,15 +165,24 @@ class MLResumeParser:
         return text.strip()
     
     def _extract_name(self, text):
-        # Name extraction disabled
+        """
+        Name extraction removed as requested.
+        Returns a placeholder value.
+        """
         return "Not provided"
 
     def _extract_name_improved(self, resume_text):
-        # Name extraction disabled
+        """
+        Name extraction removed as requested.
+        Returns a placeholder value.
+        """
         return "Not provided"
 
     def _is_valid_name(self, text, blacklist):
-        # Name validation disabled
+        """
+        Name validation removed as requested.
+        Always returns False.
+        """
         return False
     
     def _extract_contact_info(self, text):

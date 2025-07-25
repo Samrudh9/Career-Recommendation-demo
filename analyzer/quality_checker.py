@@ -119,40 +119,48 @@ class ResumeQualityChecker:
         score = 0
         feedback = []
         
-        education = data.get('education', '')
-        if not education or education == 'Not detected':
-            feedback.append("Add clear education section with degree details")
-            return 0, feedback
-        
-        # Degree relevance (6 pts)
-        relevant_keywords = ['computer', 'software', 'engineering', 'technology', 'science', 'it', 'information']
-        if any(keyword in education.lower() for keyword in relevant_keywords):
-            score += 6
+        # Check for structured qualification data
+        structured_qualification = data.get('structured_qualification', [])
+        if structured_qualification:
+            # Score based on structured data
+            for qual in structured_qualification:
+                # Degree relevance (8 pts)
+                degree = qual.get('degree', '').lower()
+                major = qual.get('major', '').lower()
+                relevant_keywords = ['computer', 'software', 'engineering', 'technology', 'science', 'it', 'information']
+                
+                if any(keyword in f"{degree} {major}" for keyword in relevant_keywords):
+                    score += 8
+                else:
+                    score += 4
+                    feedback.append("Highlight relevant coursework that relates to your target role")
+                
+                # Institution provided (6 pts)
+                if qual.get('institution') and qual['institution'] != "Not specified":
+                    score += 6
+                else:
+                    feedback.append("Include institution name for better credibility")
+                
+                # Break after first qualification to avoid over-scoring
+                break
+            
+            # Bonus for multiple qualifications
+            if len(structured_qualification) > 1:
+                score += 6
         else:
-            score += 3  # Some credit for having education
-            feedback.append("Highlight relevant coursework that relates to your target role")
-        
-        # GPA/Grades (5 pts)
-        gpa_patterns = [r'gpa[:\s]*(\d+\.?\d*)', r'cgpa[:\s]*(\d+\.?\d*)', r'grade[:\s]*[a-a+]']
-        gpa_found = any(re.search(pattern, education.lower()) for pattern in gpa_patterns)
-        if gpa_found:
-            score += 5
-        else:
-            feedback.append("Include GPA if 3.0 or above (out of 4.0)")
-        
-        # Academic awards/certifications (5 pts)
-        award_keywords = ['honor', 'dean', 'scholarship', 'award', 'distinction', 'magna cum laude']
-        if any(keyword in education.lower() for keyword in award_keywords):
-            score += 5
-        else:
-            feedback.append("Add any academic honors or achievements")
-        
-        # Institution reputation (4 pts) - Give some points for having institution
-        if len(education.split()) > 5:  # Detailed education section
-            score += 4
-        else:
-            score += 2
-            feedback.append("Provide more details about your educational background")
+            # Fallback to text-based scoring
+            education = data.get('education', '')
+            if not education or education == 'Not detected':
+                feedback.append("Add clear education section with degree details")
+                return 0, feedback
+            
+            # Apply existing logic for text-based scoring
+            relevant_keywords = ['computer', 'software', 'engineering', 'technology', 'science', 'it', 'information']
+            if any(keyword in education.lower() for keyword in relevant_keywords):
+                score += 6
+            else:
+                score += 3
+                feedback.append("Highlight relevant coursework that relates to your target role")
         
         return min(20, score), feedback
     
@@ -216,57 +224,67 @@ class ResumeQualityChecker:
         score = 0
         feedback = []
         
-        projects = data.get('projects', '')
-        experience = data.get('experience', '')
+        # Check structured data first
+        structured_projects = data.get('structured_projects', [])
+        structured_experience = data.get('structured_experience', [])
         
-        if not projects and not experience:
+        if not structured_projects and not structured_experience:
             feedback.append("Add projects section showcasing your practical work")
             return 0, feedback
         
-        combined_text = f"{projects} {experience}".lower()
+        # Score structured projects (20 pts)
+        if structured_projects:
+            project_score = 0
+            for project in structured_projects[:3]:  # Limit to first 3 projects
+                title = project.get('title', '')
+                description = project.get('description', '')
+                technologies = project.get('technologies', [])
+                
+                # Project has clear title (3 pts)
+                if title and title != "Untitled Project":
+                    project_score += 3
+                
+                # Project has detailed description (4 pts)
+                if description and len(description) > 50:
+                    project_score += 4
+                elif description:
+                    project_score += 2
+                
+                # Project mentions technologies (3 pts)
+                if technologies:
+                    project_score += 3
+                else:
+                    feedback.append("Specify technologies used in your projects")
+            
+            score += min(15, project_score)
         
-        # Project Quality (20 pts)
-        # Clear problem-solution-impact structure
-        impact_indicators = ['improved', 'increased', 'reduced', 'optimized', 'enhanced', 'developed', 'built', 'created']
-        impact_count = sum(1 for indicator in impact_indicators if indicator in combined_text)
+        # Score structured experience (10 pts)
+        if structured_experience:
+            exp_score = 0
+            for exp in structured_experience[:2]:  # Limit to first 2 experiences
+                job_title = exp.get('job_title', '')
+                company = exp.get('company', '')
+                duration = exp.get('duration', '')
+                
+                # Has job title (3 pts)
+                if job_title:
+                    exp_score += 3
+                
+                # Has company (3 pts)
+                if company:
+                    exp_score += 3
+                
+                # Has duration (4 pts)
+                if duration and duration != "Duration not specified":
+                    exp_score += 4
+                else:
+                    feedback.append("Include duration for work experiences")
+            
+            score += min(10, exp_score)
         
-        if impact_count >= 5:
-            score += 8
-        elif impact_count >= 3:
-            score += 6
-        elif impact_count >= 1:
-            score += 3
-        else:
-            feedback.append("Use action verbs and describe the impact of your projects")
-        
-        # Quantifiable results
-        metrics_pattern = r'\d+%|\d+\$|\d+x|by \d+|saved \d+|improved.*\d+'
-        if re.search(metrics_pattern, combined_text):
-            score += 6
-        else:
-            feedback.append("Add quantifiable metrics to your projects (e.g., 'improved performance by 40%')")
-        
-        # Tech stack visibility
-        tech_keywords = ['python', 'react', 'node', 'database', 'api', 'framework', 'library']
-        tech_count = sum(1 for tech in tech_keywords if tech in combined_text)
-        if tech_count >= 3:
-            score += 6
-        elif tech_count >= 1:
-            score += 3
-        else:
-            feedback.append("Clearly mention technologies and tools used in your projects")
-        
-        # Relevance (10 pts)
-        project_types = ['web', 'mobile', 'machine learning', 'data', 'api', 'database', 'automation']
-        relevant_projects = sum(1 for ptype in project_types if ptype in combined_text)
-        
-        if relevant_projects >= 2:
-            score += 10
-        elif relevant_projects >= 1:
-            score += 7
-        else:
-            score += 3
-            feedback.append("Include projects that are relevant to your target career path")
+        # Bonus for having both projects and experience
+        if structured_projects and structured_experience:
+            score += 5
         
         return min(30, score), feedback
     

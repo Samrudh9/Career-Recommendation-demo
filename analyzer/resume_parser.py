@@ -107,6 +107,21 @@ RE_SMALLCAPS = re.compile(r'\[\[(\w+)\]\]')
 RE_LINE_CONTINUATIONS = re.compile(r'\\\n')
 RE_BULLET_POINTS = re.compile(r'[•∙⋅⦁◦⟐⟡⟢⟣⟤⟥⟦⟧⟨⟩⟪⟫]')
 RE_DASHES = re.compile(r'[–—−]')
+RE_WHITESPACE = re.compile(r'\s+')
+
+# Enhanced qualification extraction patterns
+RE_QUALIFICATION_PATTERNS = [
+    re.compile(r'(B\.?Tech|Bachelor|M\.?Tech|Master|Ph\.?D|MBA|BCA|MCA|B\.?Sc|M\.?Sc|B\.?E|M\.?E)\s+(?:in|of)?\s+([\w\s]+?)(?:from|at|,|\n)', re.IGNORECASE),
+    re.compile(r'(Diploma|Certificate)\s+(?:in|of)?\s+([\w\s]+?)(?:from|at|,|\n)', re.IGNORECASE),
+    re.compile(r'([\w\s]+?)\s+(?:University|College|Institute|School)', re.IGNORECASE)
+]
+
+# Work experience extraction patterns
+RE_EXPERIENCE_PATTERNS = [
+    re.compile(r'([\w\s]+?)\s+at\s+([\w\s&]+?)(?:,|\s+)(\d{4}|\w+\s+\d{4})(?:\s*[-–]\s*)?(\d{4}|\w+\s+\d{4}|present|current)?', re.IGNORECASE),
+    re.compile(r'(Software Engineer|Developer|Analyst|Manager|Intern|Consultant|Designer)\s+[-–]\s+([\w\s&]+?)(?:,|\n)', re.IGNORECASE),
+    re.compile(r'([\w\s]+?)\s+\|\s+([\w\s&]+?)\s+\|\s+([\d\w\s\-–]+)', re.IGNORECASE)
+]
 
 # ========== PRECISION RESUME PARSING COMPONENTS ==========
 
@@ -772,62 +787,51 @@ def clean_text(text: str) -> str:
 def parse_resume(text: str) -> Dict[str, Any]:
     """
     Main function to parse resume text into structured information.
-    Name extraction is disabled, but other fields are detected.
     """
+    # Clean the text
     text = clean_text(text)
-    name = "Not provided"  # Name extraction disabled
-
-    # Contact info
+    
+    # Extract name (for plain text, not docx)
+    name = "Not detected"  # Will be properly extracted for DOCX files
+    
+    # Find name in first few lines
+    lines = text.split('\n')
+    for i, line in enumerate(lines[:5]):
+        if len(line) < 50 and is_valid_name(line):
+            name = line
+            break
+    
+    # Extract contact information
     contact = extract_contact_info(text)
-
-    # Education
+    
+    # Extract education
     education = extract_education_details(text)
-
-    # Experience (add detection)
-    experience_section = extract_section(text, "experience") or extract_section(text, "work") or ""
-    experience = []
-    if experience_section:
-        # Simple split by lines, filter out empty and section headers
-        for line in experience_section.split('\n'):
-            l = line.strip()
-            if l and not RE_SECTION_HEADER.match(l):
-                experience.append(l)
-    if not experience:
-        # Fallback: scan for lines with keywords
-        keywords = ["intern", "developer", "engineer", "analyst", "manager", "experience"]
-        for line in text.split('\n'):
-            if any(k in line.lower() for k in keywords):
-                experience.append(line.strip())
-    if not experience:
-        experience = "Not detected"
-
-    # Skills
+    
+    # Extract skills
     skills = extract_skills_categorized(text)
-
-    # Projects
+    
+    # Extract projects
     projects = extract_projects(text)
-
-    # Certificates
+    
+    # Extract certifications
     certificates_section = extract_section(text, "certifications") or extract_section(text, "certificates") or ""
     certificates = []
     if certificates_section:
+        # Split by newlines and bullet points
         for line in re.split(r'\n+|(?:^|\n)\s*[•\-*]\s*', certificates_section):
             if line.strip():
                 certificates.append(line.strip())
-
-    # Summary (optional, fallback to Not detected)
-    summary = "Not detected"
-
+    
+    # Build final result
     result = {
         "name": name,
         "contact": contact,
-        "education": education if education else "Not detected",
-        "experience": experience,
+        "education": education,
         "skills": skills,
         "projects": projects,
-        "certificates": certificates,
-        "summary": summary
+        "certificates": certificates
     }
+    
     return result
 
 def extract_text_forensic(docx_path: str) -> List[str]:
@@ -1294,3 +1298,154 @@ def parse_resume_atomic(docx_path: str) -> ResumeAnalysis:
         confidence_scores=confidence_scores,
         warnings=warnings
     )
+
+def extract_qualification_structured(text: str) -> List[Dict[str, str]]:
+    """
+    Extract structured qualification information including degree, major, and institution.
+    """
+    qualifications = []
+    
+    # Find education section first
+    education_section = extract_section(text, "education") or extract_section(text, "academic") or text
+    
+    # Extract qualification patterns
+    for pattern in RE_QUALIFICATION_PATTERNS:
+        matches = pattern.findall(education_section)
+        for match in matches:
+            if len(match) >= 2:
+                degree = match[0].strip()
+                major = match[1].strip()
+                
+                # Look for institution in the same line or nearby lines
+                institution = ""
+                lines = education_section.split('\n')
+                for line in lines:
+                    if degree.lower() in line.lower() and major.lower() in line.lower():
+                        # Extract institution from the same line
+                        inst_match = re.search(r'(?:from|at)\s+([\w\s]+?)(?:,|\n|$)', line, re.IGNORECASE)
+                        if inst_match:
+                            institution = inst_match.group(1).strip()
+                        break
+                
+                qualifications.append({
+                    "degree": degree,
+                    "major": major,
+                    "institution": institution or "Not specified"
+                })
+    
+    return qualifications
+
+def extract_work_experience_structured(text: str) -> List[Dict[str, str]]:
+    """
+    Extract structured work experience including job title, company, and duration.
+    """
+    experiences = []
+    
+    # Find experience section
+    experience_section = extract_section(text, "experience") or extract_section(text, "work") or text
+    
+    # Extract experience patterns
+    for pattern in RE_EXPERIENCE_PATTERNS:
+        matches = pattern.findall(experience_section)
+        for match in matches:
+            if len(match) >= 2:
+                job_title = match[0].strip()
+                company = match[1].strip()
+                start_date = match[2].strip() if len(match) > 2 else ""
+                end_date = match[3].strip() if len(match) > 3 and match[3] else "Present"
+                
+                duration = f"{start_date} - {end_date}" if start_date else "Duration not specified"
+                
+                experiences.append({
+                    "job_title": job_title,
+                    "company": company,
+                    "duration": duration
+                })
+    
+    return experiences
+
+def extract_skills_detailed(text: str) -> Dict[str, List[str]]:
+    """
+    Extract detailed skills categorization with better accuracy.
+    """
+    skills_data = extract_skills_categorized(text)
+    
+    # Also extract skills mentioned in projects and experience sections
+    projects_section = extract_section(text, "projects") or ""
+    experience_section = extract_section(text, "experience") or ""
+    combined_text = f"{text} {projects_section} {experience_section}".lower()
+    
+    # Additional skill extraction from context
+    skill_context_patterns = [
+        r'(?:used|utilizing|working with|experience in|proficient in|skilled in)\s+([\w\s,]+)',
+        r'(?:technologies|tools|frameworks):\s*([\w\s,]+)',
+        r'(?:programming languages):\s*([\w\s,]+)'
+    ]
+    
+    for pattern in skill_context_patterns:
+        matches = re.findall(pattern, combined_text, re.IGNORECASE)
+        for match in matches:
+            skills_in_context = [s.strip() for s in re.split(r'[,&\n]', match) if s.strip()]
+            for skill in skills_in_context:
+                # Categorize the skill
+                skill_lower = skill.lower()
+                for category, known_skills in SKILL_CATEGORIES.items():
+                    if any(known_skill in skill_lower for known_skill in known_skills):
+                        if skill not in skills_data[category]:
+                            skills_data[category].append(skill)
+    
+    return skills_data
+
+def extract_projects_enhanced(text: str) -> List[Dict[str, Any]]:
+    """
+    Enhanced project extraction with title, description, and technologies.
+    """
+    projects = extract_projects(text)
+    
+    # Enhance with better structure
+    enhanced_projects = []
+    for project in projects:
+        if isinstance(project, dict):
+            enhanced_project = {
+                "title": project.get("title", "Untitled Project"),
+                "description": project.get("description", "No description available"),
+                "technologies": project.get("technologies", [])
+            }
+        else:
+            # Handle string format
+            enhanced_project = {
+                "title": "Project",
+                "description": str(project),
+                "technologies": extract_technologies(str(project))
+            }
+        
+        enhanced_projects.append(enhanced_project)
+    
+    return enhanced_projects
+
+def parse_resume_structured(text: str) -> Dict[str, Any]:
+    """
+    Enhanced resume parsing with structured field extraction.
+    """
+    # Clean the text
+    text = clean_text(text)
+    
+    # Extract structured information
+    qualification = extract_qualification_structured(text)
+    work_experience = extract_work_experience_structured(text)
+    skills = extract_skills_detailed(text)
+    projects = extract_projects_enhanced(text)
+    
+    # Extract basic contact information
+    contact = extract_contact_info(text)
+    
+    return {
+        "name": "Not provided",  # Name extraction disabled
+        "contact": contact,
+        "qualification": qualification,
+        "work_experience": work_experience,
+        "skills": skills,
+        "projects": projects,
+        "raw_education": extract_section(text, "education") or "Not detected",
+        "raw_experience": extract_section(text, "experience") or "Not detected"
+    }
