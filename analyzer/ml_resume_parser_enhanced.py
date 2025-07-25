@@ -65,8 +65,21 @@ class MLResumeParser:
                 if match:
                     found.add(skill)
         return list(found) or ["Not detected"]
-            else:
-                match = get_close_matches(skill.lower(), lower_text.split(), n=1, cutoff=0.85)
-                if match:
-                    found.add(skill)
-        return list(found) or ["Not detected"]
+    
+    def _extract_projects(self, text):
+        """Extract projects from resume text"""
+        proj_keywords = ['project', 'developed', 'created', 'built', 'implemented', 'designed']
+        proj_lines = []
+        
+        # Look for project section
+        sections = text.lower().split('\n\n')
+        for section in sections:
+            if any(section.strip().startswith(kw) for kw in ['project', 'projects', 'personal project']):
+                return section.strip()
+        
+        # Fallback: look for lines with project keywords
+        for line in text.lower().split('\n'):
+            if any(kw in line for kw in proj_keywords):
+                proj_lines.append(line)
+                
+        return ' '.join(proj_lines[:5]) if proj_lines else "Not detected"
