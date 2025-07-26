@@ -1,31 +1,95 @@
-Career,Skill
-Data Scientist	Python, R, SQL, Pandas, NumPy, Scikit-learn, PySpark, TensorFlow, PyTorch, MLflow, Airflow, Hadoop, Spark, DVC, BigQuery, Tableau, Power BI, Git, Jupyter, Databricks
-Mobile App Developer	Kotlin, Java, Android Studio, Jetpack Compose, Flutter, Dart, Firebase, SQLite, Room DB, Retrofit, GraphQL, REST APIs, GitHub Actions, CodePush, Play Store Deployment
-Project Manager	PMP, Agile, Scrum, Kanban, JIRA, Asana, Trello, Confluence, MS Project, Gantt Charts, Risk Management Tools, RACI, OKRs, Agile Metrics (Burndown, Velocity), Smartsheet
-Frontend Developer	HTML, CSS, JS, React, Next.js, TypeScript, Redux, Tailwind, Webpack, Babel, Vite, Bootstrap, Cypress, Storybook, GSAP, SEO Principles, GraphQL
-Software Engineer	Python, Java, C++, Git, GitHub Actions, OOP, System Design, Design Patterns, REST/GraphQL, Docker, Microservices, TDD, CI/CD, Unit Testing (JUnit/PyTest), Agile SDLC
-Statistician	"	R, Python, SAS, SPSS, SQL, Stata, Regression, ANOVA, Bayesian Inference, Monte Carlo Simulation, Data Wrangling, RMarkdown, ggplot2, Time Series Analysis"
-Machine Learning Engineer	Python, Scikit-learn, TensorFlow, Keras, PyTorch, ONNX, MLflow, SageMaker, DVC, FastAPI, Model Monitoring, AutoML (H2O.ai, Auto-Sklearn), Explainable AI (SHAP, LIME)
-Cybersecurity Analyst	Kali Linux, Ethical Hacking, Wireshark, Metasploit, Nmap, Nessus, Burp Suite, OWASP Top 10, SIEM, Splunk, IDS/IPS, SOC, Firewalls, MITRE ATT&CK, Zero Trust, CEH
-System Administrator	Linux, Bash, PowerShell, Ansible, Jenkins, Zabbix, Nagios, Docker, KVM, VMware, Windows Server, Active Directory, DNS/DHCP, Cloud (AWS EC2/S3), Monitoring Tools
-Graphic Designer	Photoshop, Illustrator, InDesign, After Effects, XD, Figma, Sketch, Blender (3D), Motion Graphics, Typography, Branding, Canva, Affinity Suite, UI Mockups
-CAD Designer	AutoCAD, SolidWorks, Fusion 360, CATIA, Revit, Creo, ANSYS, 3D Printing Tools, GD&T, Finite Element Analysis, Technical Drafting Standards
-Business Analyst	Excel, SQL, Tableau, Power BI, Python, BPMN, Data Warehousing, UML, Agile/Scrum, JIRA, Stakeholder Mapping, SWOT Analysis, ERP Concepts
-Backend Developer	Python, Django, Flask, Node.js, Express.js, FastAPI, SQLAlchemy, MongoDB, PostgreSQL, Redis, Docker, RabbitMQ, REST/GraphQL APIs, JWT, OAuth, Unit Tests
-CRM Specialist	Salesforce, HubSpot, Zoho CRM, Marketo, API Integration, Zapier, Data Cleansing, CRM Workflows, Reporting Dashboards, Lead Scoring, Customer Segmentation
-Digital Marketer	SEO, SEM, Google Ads, Google Analytics, Meta Ads, Ahrefs, SEMrush, HubSpot, Mailchimp, A/B Testing, Canva, WordPress, UTM Tracking, Automation Tools (Zapier)
-Data Analyst	Python, R, Pandas, NumPy, SQL, Tableau, Power BI, Looker, Excel, Data Cleaning, DAX, Data Studio, Exploratory Data Analysis, Data Wrangling, Business Intelligence
-Control Systems Engineer	MATLAB, Simulink, LabVIEW, Arduino, Raspberry Pi, Embedded C, Control Theory, PID Controllers, Robotics, Sensors, Actuators, IoT Integration
-SAP Consultant	SAP S/4HANA, SAP Fiori, SAP BW/BI, ABAP, SAP Cloud Platform, Business Process Re-engineering, SAP MM/SD/FICO modules, SAP HANA, Data Migration
-AI Researcher	Python, PyTorch, TensorFlow, HuggingFace Transformers, NLP (BERT, GPT), OpenCV, Deep Reinforcement Learning, Research Paper Writing, LaTeX, Arxiv, GANs, Model Explainability
-DevOps Engineer	AWS, Azure, Docker, Kubernetes, Jenkins, Terraform, Helm, GitOps, Prometheus, Grafana, CI/CD, GitHub Actions, ArgoCD, ELK Stack, Ansible, Bash
-Financial Analyst	Excel, Python (Finance Libraries), Power BI, Tableau, QuickBooks, Valuation Models, Bloomberg Terminal, Financial Forecasting, Monte Carlo Simulation, R, Budgeting Tools
-Content Writer	Grammarly, WordPress, SurferSEO, SEMrush, Google Docs, QuillBot, Canva, Keyword Research, SEO Tools, Research Skills, Copywriting Frameworks (AIDA, PAS)
-HR Manager	HRIS (Workday, BambooHR), ATS (Greenhouse, Lever), Payroll Tools (ADP), Labor Law Knowledge, Training Tools, Performance Management Systems, LMS, Employee Engagement Tools
-Accountant	Tally, QuickBooks, Zoho Books, Excel (VBA, Pivot), GST Filing, Xero, Reconciliation Tools, Tax Compliance Tools, IFRS, Auditing Techniques
-Educator	Google Classroom, Moodle, MS Teams, Zoom, Kahoot, Canva for Education, Video Recording Tools (OBS), LMS Management, Online Assessment Tools, Gamified Learning
-Event Manager	Trello, Eventbrite, Scheduling Software (Doodle, Calendly), Budgeting Tools (Zoho Expense), CRM Integration, Social Media Planning Tools, Venue Softwares
-Sales Executive	Salesforce, Zoho CRM, Cold Email Tools, Demo Tools, Sales Navigator, KPI Dashboards, Lead Scoring, Market Research Platforms, HubSpot Sales, Proposal Tools
-Journalist	SEO, WordPress, Grammarly, Research Tools, Adobe Premiere Pro, OBS Studio, Audacity, Interview Recording Tools, Transcription Tools (Otter.ai), Fact-Checking Tools
-UX Designer	Figma, Adobe XD, Miro, User Personas, Prototyping Tools, A/B Testing Tools, Accessibility Guidelines (WCAG), Maze, Hotjar, Google UX Research Certifications
-Full Stack Developer	HTML, CSS, JavaScript, React, Node.js, Spring Boot, MongoDB, PostgreSQL, REST & GraphQL APIs, Docker, Git, JWT, Redis, Jenkins, CI/CD Pipelines
+Skill,Career
+python,Data Scientist
+r,Data Scientist
+sql,Data Scientist
+pandas,Data Scientist
+numpy,Data Scientist
+scikit-learn,Data Scientist
+tensorflow,Data Scientist
+pytorch,Data Scientist
+machine learning,Data Scientist
+data science,Data Scientist
+kotlin,Mobile App Developer
+java,Mobile App Developer
+android,Mobile App Developer
+flutter,Mobile App Developer
+dart,Mobile App Developer
+firebase,Mobile App Developer
+sqlite,Mobile App Developer
+ios,Mobile App Developer
+swift,Mobile App Developer
+react native,Mobile App Developer
+html,Frontend Developer
+css,Frontend Developer
+javascript,Frontend Developer
+react,Frontend Developer
+nextjs,Frontend Developer
+typescript,Frontend Developer
+redux,Frontend Developer
+tailwind,Frontend Developer
+bootstrap,Frontend Developer
+vue,Frontend Developer
+angular,Frontend Developer
+nodejs,Backend Developer
+express,Backend Developer
+django,Backend Developer
+flask,Backend Developer
+fastapi,Backend Developer
+mongodb,Backend Developer
+postgresql,Backend Developer
+redis,Backend Developer
+docker,Backend Developer
+kubernetes,Backend Developer
+aws,DevOps Engineer
+azure,DevOps Engineer
+jenkins,DevOps Engineer
+terraform,DevOps Engineer
+ansible,DevOps Engineer
+linux,System Administrator
+bash,System Administrator
+powershell,System Administrator
+windows server,System Administrator
+photoshop,Graphic Designer
+illustrator,Graphic Designer
+indesign,Graphic Designer
+figma,Graphic Designer
+sketch,Graphic Designer
+autocad,CAD Designer
+solidworks,CAD Designer
+fusion 360,CAD Designer
+excel,Business Analyst
+tableau,Business Analyst
+power bi,Business Analyst
+salesforce,CRM Specialist
+hubspot,CRM Specialist
+seo,Digital Marketer
+google ads,Digital Marketer
+google analytics,Digital Marketer
+matlab,Control Systems Engineer
+simulink,Control Systems Engineer
+labview,Control Systems Engineer
+arduino,Control Systems Engineer
+raspberry pi,Control Systems Engineer
+sap,SAP Consultant
+abap,SAP Consultant
+c++,Software Engineer
+git,Software Engineer
+github,Software Engineer
+oop,Software Engineer
+design patterns,Software Engineer
+rest api,Software Engineer
+graphql,Software Engineer
+microservices,Software Engineer
+ci/cd,Software Engineer
+unit testing,Software Engineer
+agile,Project Manager
+scrum,Project Manager
+kanban,Project Manager
+jira,Project Manager
+confluence,Project Manager
+ms project,Project Manager
+cybersecurity,Cybersecurity Analyst
+ethical hacking,Cybersecurity Analyst
+wireshark,Cybersecurity Analyst
+kali linux,Cybersecurity Analyst
+penetration testing,Cybersecurity Analyst

@@ -66,7 +66,14 @@ class ResumeAnalyzer:
             'projects', 'project work', 'project experience',
             'academic projects', 'personal projects', 'key projects'
         ]
-    
+        
+        # Add certification headers
+        self.certification_headers = [
+            'certifications', 'certificates', 'certification',
+            'achievements', 'awards', 'accomplishments',
+            'credentials', 'licenses', 'professional certifications'
+        ]
+
     def load_skills_career_map(self, file_path):
         """Load skills to career mapping from CSV file"""
         skills_map = {}
@@ -84,35 +91,153 @@ class ResumeAnalyzer:
         return skills_map
     
     def extract_section_content(self, text, section_headers):
-        """Extract content under specific section headers"""
+        """Extract content under specific section headers with improved detection"""
         content = []
         text_lower = text.lower()
         
         for header in section_headers:
-            # Find section start
-            pattern = rf'\b{re.escape(header)}\b\s*:?'
-            matches = list(re.finditer(pattern, text_lower))
+            # Find section start with more flexible patterns
+            patterns = [
+                rf'\b{re.escape(header)}\b\s*:?',
+                rf'^{re.escape(header)}\s*:?',
+                rf'\n\s*{re.escape(header)}\s*:?'
+            ]
             
-            for match in matches:
-                start_pos = match.end()
+            for pattern in patterns:
+                matches = list(re.finditer(pattern, text_lower, re.MULTILINE))
                 
-                # Find next section or end of text
-                next_section_pattern = r'\n\s*(?:[a-z\s]+:|\b(?:skills?|experience|education|projects?|certifications?|achievements?|summary|objective)\b)'
-                next_match = re.search(next_section_pattern, text_lower[start_pos:])
-                
-                if next_match:
-                    end_pos = start_pos + next_match.start()
-                else:
+                for match in matches:
+                    start_pos = match.end()
+                    
+                    # Find next section or end of text
+                    next_section_patterns = [
+                        r'\n\s*(?:[a-z\s]+:)',
+                        r'\n\s*(?:skills?|education|experience|projects?|certifications?|achievements?|summary|objective|contact|personal)\b',
+                        r'\n\s*[A-Z][A-Z\s]+\n'  # All caps section headers
+                    ]
+                    
                     end_pos = len(text)
-                
-                section_text = text[start_pos:end_pos].strip()
-                if section_text:
-                    content.append(section_text)
+                    for next_pattern in next_section_patterns:
+                        next_match = re.search(next_pattern, text_lower[start_pos:])
+                        if next_match:
+                            end_pos = start_pos + next_match.start()
+                            break
+                    
+                    section_text = text[start_pos:end_pos].strip()
+                    if section_text and len(section_text) > 10:  # Ensure meaningful content
+                        content.append(section_text)
         
         return '\n'.join(content)
     
+    def format_education_entry(self, match_tuple):
+        """Format education entry into a LinkedIn-style structured string"""
+        try:
+            if len(match_tuple) == 5:
+                degree, branch, institution, location, year = match_tuple
+                return {
+                    'degree': f"{degree.upper()} in {branch.title()}",
+                    'institution': institution.title(),
+                    'location': location.strip(),
+                    'duration': year,
+                    'type': 'degree'
+                }
+            elif len(match_tuple) == 4:
+                degree, branch, institution, year = match_tuple
+                return {
+                    'degree': f"{degree.upper()} in {branch.title()}",
+                    'institution': institution.title(),
+                    'location': '',
+                    'duration': year,
+                    'type': 'degree'
+                }
+            elif len(match_tuple) == 3:
+                degree, branch, institution = match_tuple
+                return {
+                    'degree': f"{degree.upper()} in {branch.title()}",
+                    'institution': institution.title(),
+                    'location': '',
+                    'duration': '',
+                    'type': 'degree'
+                }
+            else:
+                return {
+                    'degree': ' '.join(match_tuple),
+                    'institution': '',
+                    'location': '',
+                    'duration': '',
+                    'type': 'other'
+                }
+        except:
+            return {
+                'degree': ' '.join(match_tuple),
+                'institution': '',
+                'location': '',
+                'duration': '',
+                'type': 'other'
+            }
+
+    def format_experience_entry(self, match_tuple):
+        """Format experience entry into a LinkedIn-style structured string"""
+        if not match_tuple:
+            return None
+            
+        try:
+            # Handle single string
+            if isinstance(match_tuple, str):
+                return {
+                    'title': match_tuple.strip(),
+                    'company': '',
+                    'duration': '',
+                    'location': 'Remote',
+                    'description': '',
+                    'type': 'work'
+                }
+            
+            # Handle tuple
+            if isinstance(match_tuple, tuple):
+                # Filter out empty items
+                match_list = [item.strip() for item in match_tuple if item and item.strip()]
+                
+                if not match_list:
+                    return None
+                
+                # Initialize result structure
+                result = {
+                    'title': '',
+                    'company': '',
+                    'duration': '',
+                    'location': 'Remote',
+                    'description': '',
+                    'type': 'work'
+                }
+                
+                # Identify components
+                for item in match_list:
+                    item_lower = item.lower()
+                    if any(keyword in item_lower for keyword in ['technologies', 'solutions', 'systems', 'pvt', 'ltd', 'inc', 'corp', 'company', 'organization', 'group', 'services', 'enterprises', 'institute']):
+                        result['company'] = item.title()
+                    elif any(keyword in item_lower for keyword in ['intern', 'developer', 'engineer', 'analyst', 'manager', 'lead', 'executive', 'specialist', 'coordinator', 'consultant', 'designer', 'administrator', 'trainee', 'associate']):
+                        result['title'] = item.title()
+                    elif re.match(r'\d{4}', item) or any(month in item_lower for month in ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']):
+                        result['duration'] = item
+                
+                # If we couldn't identify clearly, use order
+                if not result['company'] and not result['title'] and len(match_list) >= 2:
+                    result['title'] = match_list[0].title()
+                    result['company'] = match_list[1].title()
+                elif not result['title'] and match_list:
+                    result['title'] = match_list[0].title()
+                
+                return result if result['title'] or result['company'] else None
+            
+            return None
+            
+        except Exception as e:
+            print(f"Error formatting experience: {e}")
+            return None
+
     def extract_education(self, text):
-        """Extract education information from resume text with proper formatting"""
+        """Extract education information with structured formatting"""
         education_info = []
         
         # First try to extract from education section
@@ -133,7 +258,9 @@ class ResumeAnalyzer:
             matches = re.findall(pattern, search_text, re.IGNORECASE)
             for match in matches:
                 if len(match) >= 3:
-                    education_info.append(self.format_education_entry(match))
+                    formatted_entry = self.format_education_entry(match)
+                    if formatted_entry:
+                        education_info.append(formatted_entry)
         
         # If no structured data found, try simpler extraction
         if not education_info:
@@ -147,78 +274,50 @@ class ResumeAnalyzer:
                 matches = re.findall(pattern, search_text, re.IGNORECASE)
                 for match in matches:
                     if isinstance(match, tuple):
-                        education_info.append(' '.join(match).strip())
+                        education_info.append({
+                            'degree': ' '.join(match).strip().title(),
+                            'institution': '',
+                            'location': '',
+                            'duration': '',
+                            'type': 'simple'
+                        })
                     else:
-                        education_info.append(match.strip())
+                        education_info.append({
+                            'degree': match.strip().title(),
+                            'institution': '',
+                            'location': '',
+                            'duration': '',
+                            'type': 'simple'
+                        })
         
-        # Remove duplicates and clean up
-        education_info = list(set([edu.strip() for edu in education_info if edu.strip()]))
-        
-        return education_info if education_info else ["Not detected"]
-    
-    def format_education_entry(self, match_tuple):
-        """Format education entry into a readable string"""
-        try:
-            if len(match_tuple) == 5:
-                degree, branch, institution, location, year = match_tuple
-                return f"{degree.upper()} in {branch.title()} from {institution.title()}, {location.strip()} ({year})"
-            elif len(match_tuple) == 4:
-                degree, branch, institution, year = match_tuple
-                return f"{degree.upper()} in {branch.title()} from {institution.title()} ({year})"
-            elif len(match_tuple) == 3:
-                degree, branch, institution = match_tuple
-                return f"{degree.upper()} in {branch.title()} from {institution.title()}"
-            else:
-                return ' '.join(match_tuple)
-        except:
-            return ' '.join(match_tuple)
-    
+        return education_info if education_info else [{"degree": "Not detected", "institution": "", "location": "", "duration": "", "type": "none"}]
+
     def extract_experience(self, text):
-        """Extract work experience information with better formatting"""
+        """Extract experience information with structured formatting"""
         experience_info = []
         
         # First try to extract from experience section
         experience_section = self.extract_section_content(text, self.experience_headers)
         search_text = experience_section if experience_section else text
         
-        # Enhanced experience patterns
+        # More specific patterns for actual resume content
         experience_patterns = [
-            # Pattern: Position at Company (Duration)
-            r'(?:worked as|position:|role:)?\s*([^,\n]+(?:developer|engineer|intern|analyst|manager|lead|executive|specialist|coordinator)[^,\n]*)\s+(?:at|with|@)\s+([^,\n]+)\s*(?:from|since)?\s*(\d{4}|\w+\s+\d{4})?\s*(?:to|-)\s*(\d{4}|\w+\s+\d{4}|present)?',
-            # Pattern: Company - Position (Duration)
-            r'([^,\n]+(?:technologies|solutions|systems|pvt|ltd|inc|corp|company)[^,\n]*)\s*[-–]\s*([^,\n]+(?:developer|engineer|intern|analyst|manager)[^,\n]*)\s*(\d{4}|\w+\s+\d{4})?\s*(?:to|-)\s*(\d{4}|\w+\s+\d{4}|present)?',
-            # Pattern: Years of experience
-            r'(\d+)\+?\s*(?:years?|yrs?)\s*(?:of\s+)?(?:experience|exp)(?:\s+(?:in|as|with)\s+([^,.\n]+))?'
+            # Pattern: Company followed by position
+            r'(?:^|\n)\s*([A-Z][^,\n]+(?:technologies|solutions|systems|pvt|ltd|inc|corp|company|organization|group|services|enterprises|institute)[^,\n]*)\s*[,\-–]?\s*([^,\n]*(?:intern|developer|engineer|analyst|manager|lead|executive|specialist|coordinator|consultant|designer|administrator|trainee|associate)[^,\n]*)',
+            
+            # Pattern: Position at Company
+            r'([^,\n]*(?:intern|developer|engineer|analyst|manager|lead|executive|specialist|coordinator|consultant|designer|administrator|trainee|associate)[^,\n]*)\s+(?:at|with|@|in)\s+([A-Z][^,\n]+)',
         ]
         
         for pattern in experience_patterns:
-            matches = re.findall(pattern, search_text, re.IGNORECASE)
+            matches = re.findall(pattern, search_text, re.IGNORECASE | re.MULTILINE)
             for match in matches:
                 formatted_exp = self.format_experience_entry(match)
                 if formatted_exp:
                     experience_info.append(formatted_exp)
         
-        # Clean up and remove duplicates
-        experience_info = list(set([exp.strip() for exp in experience_info if exp.strip()]))
-        
-        return experience_info if experience_info else ["Not detected"]
-    
-    def format_experience_entry(self, match_tuple):
-        """Format experience entry into a readable string"""
-        try:
-            match_tuple = [item.strip() for item in match_tuple if item.strip()]
-            if len(match_tuple) >= 2:
-                if 'years' in match_tuple[0].lower() or 'yrs' in match_tuple[0].lower():
-                    return f"{match_tuple[0]} of experience in {match_tuple[1] if len(match_tuple) > 1 else 'various technologies'}"
-                else:
-                    position = match_tuple[0] if 'developer' in match_tuple[0].lower() or 'engineer' in match_tuple[0].lower() else match_tuple[1]
-                    company = match_tuple[1] if position == match_tuple[0] else match_tuple[0]
-                    duration = f" ({match_tuple[2]} - {match_tuple[3]})" if len(match_tuple) >= 4 else ""
-                    return f"{position.title()} at {company.title()}{duration}"
-            return ' '.join(match_tuple)
-        except:
-            return ' '.join(match_tuple)
-    
+        return experience_info if experience_info else [{"title": "Not detected", "company": "", "duration": "", "location": "", "description": "", "type": "none"}]
+
     def extract_projects(self, text):
         """Extract project information from resume text"""
         projects_info = []
@@ -263,17 +362,153 @@ class ResumeAnalyzer:
         
         return projects_info if projects_info else ["Not detected"]
     
+    def extract_certifications(self, text):
+        """Extract certification information from resume text"""
+        certifications_info = []
+        
+        # First try to extract from certifications section
+        certifications_section = self.extract_section_content(text, self.certification_headers)
+        search_text = certifications_section if certifications_section else text
+        
+        print(f"Certifications section found: {certifications_section[:200] if certifications_section else 'None'}")
+        
+        # Certification patterns
+        certification_patterns = [
+            # Common certification patterns
+            r'([A-Z][^,\n]*(?:certified|certification|certificate)[^,\n]*)',
+            r'([A-Z][^,\n]*(?:AWS|Azure|Google Cloud|Oracle|Microsoft|Cisco|CompTIA)[^,\n]*)',
+            r'([A-Z][^,\n]*(?:PMP|CISSP|CEH|CCNA|CCNP|CCIE|MCSE|MCSA)[^,\n]*)',
+            r'([A-Z][^,\n]*(?:Python|Java|JavaScript|React|Angular|Node\.js)[^,\n]*(?:certified|certification)[^,\n]*)',
+            r'([A-Z][^,\n]*(?:Data Science|Machine Learning|AI|Cloud|Security)[^,\n]*(?:certified|certification)[^,\n]*)',
+            
+            # Course completion patterns
+            r'([A-Z][^,\n]*(?:course|training|bootcamp|program)[^,\n]*(?:completed|finished|graduated)[^,\n]*)',
+            r'([A-Z][^,\n]*(?:Coursera|Udemy|edX|Pluralsight|LinkedIn Learning)[^,\n]*)',
+            
+            # Achievement patterns
+            r'([A-Z][^,\n]*(?:winner|awarded|achieved|received)[^,\n]*(?:prize|award|recognition)[^,\n]*)',
+            
+            # Professional certifications
+            r'([A-Z][^,\n]*(?:Professional|Associate|Expert|Specialist)[^,\n]*(?:certified|certification)[^,\n]*)',
+        ]
+        
+        for pattern in certification_patterns:
+            matches = re.findall(pattern, search_text, re.IGNORECASE)
+            for match in matches:
+                if len(match.strip()) > 5:  # Filter out very short matches
+                    certifications_info.append(match.strip())
+        
+        # Look for bullet points in certifications section
+        if certifications_section:
+            bullet_patterns = [
+                r'[•\-\*]\s*([^.\n]+)',
+                r'\d+\.\s*([^.\n]+)'
+            ]
+            
+            for pattern in bullet_patterns:
+                matches = re.findall(pattern, certifications_section, re.IGNORECASE)
+                for match in matches:
+                    if len(match.strip()) > 10:  # Filter reasonable length
+                        certifications_info.append(match.strip())
+        
+        # Look for common certification keywords throughout the text
+        cert_keywords = [
+            'aws certified', 'azure certified', 'google cloud certified',
+            'microsoft certified', 'oracle certified', 'cisco certified',
+            'comptia', 'pmp certified', 'cissp', 'ceh', 'ccna', 'ccnp',
+            'python certification', 'java certification', 'data science certification',
+            'machine learning certification', 'scrum master', 'agile certification'
+        ]
+        
+        for keyword in cert_keywords:
+            if keyword in text.lower():
+                # Try to extract the full certification name
+                pattern = rf'([^.\n]*{re.escape(keyword)}[^.\n]*)'
+                matches = re.findall(pattern, text, re.IGNORECASE)
+                for match in matches:
+                    if len(match.strip()) > 10 and len(match.strip()) < 100:
+                        certifications_info.append(match.strip())
+        
+        # Clean up and remove duplicates
+        certifications_info = list(set([cert.strip() for cert in certifications_info if cert.strip() and len(cert.strip()) > 5]))
+        
+        print(f"Final certifications info: {certifications_info}")
+        return certifications_info if certifications_info else ["Not detected"]
+
     def extract_skills(self, text):
-        """Extract skills from resume text"""
+        """Extract skills from resume text with improved detection"""
         skills = []
         text_lower = text.lower()
         
+        # Debug: Print available skills
+        print(f"Available skills in map: {len(self.skills_career_map)} skills")
+        print(f"Sample skills: {list(self.skills_career_map.keys())[:10]}")
+        
+        # Direct skill matching
         for skill in self.skills_career_map.keys():
             if skill in text_lower:
                 skills.append(skill)
+                print(f"Found skill: {skill}")
         
-        return skills
-    
+        # Additional skill patterns for common variations
+        skill_variations = {
+            'python': ['python', 'py'],
+            'javascript': ['javascript', 'js', 'node.js', 'nodejs'],
+            'react': ['react', 'reactjs', 'react.js'],
+            'angular': ['angular', 'angularjs'],
+            'vue': ['vue', 'vuejs', 'vue.js'],
+            'machine learning': ['machine learning', 'ml', 'ai', 'artificial intelligence'],
+            'data science': ['data science', 'data analysis', 'analytics'],
+            'android': ['android', 'android development'],
+            'ios': ['ios', 'iphone', 'ipad'],
+            'html': ['html', 'html5'],
+            'css': ['css', 'css3'],
+            'sql': ['sql', 'mysql', 'postgresql', 'sqlite'],
+            'git': ['git', 'github', 'gitlab'],
+            'docker': ['docker', 'containerization'],
+            'kubernetes': ['kubernetes', 'k8s'],
+            'aws': ['aws', 'amazon web services'],
+            'azure': ['azure', 'microsoft azure'],
+            'tensorflow': ['tensorflow', 'tf'],
+            'pytorch': ['pytorch', 'torch'],
+            'react native': ['react native', 'react-native'],
+            'c++': ['c++', 'cpp', 'c plus plus'],
+            'rest api': ['rest', 'rest api', 'restful', 'api'],
+            'graphql': ['graphql', 'graph ql'],
+            'mongodb': ['mongodb', 'mongo'],
+            'postgresql': ['postgresql', 'postgres'],
+            'photoshop': ['photoshop', 'ps', 'adobe photoshop'],
+            'illustrator': ['illustrator', 'ai', 'adobe illustrator'],
+            'figma': ['figma', 'design'],
+            'excel': ['excel', 'microsoft excel', 'spreadsheet']
+        }
+        
+        # Check for skill variations
+        for base_skill, variations in skill_variations.items():
+            if base_skill in self.skills_career_map:
+                for variation in variations:
+                    if variation in text_lower and base_skill not in skills:
+                        skills.append(base_skill)
+                        print(f"Found skill variation: {variation} -> {base_skill}")
+                        break
+        
+        # Look for skills in specific sections
+        skills_section = self.extract_section_content(text, ['skills', 'technical skills', 'technologies', 'tools'])
+        if skills_section:
+            print(f"Skills section found: {skills_section[:200]}")
+            # Extract from bullet points or comma-separated lists
+            skill_lines = re.findall(r'[•\-\*]\s*([^.\n]+)', skills_section)
+            for line in skill_lines:
+                for skill in self.skills_career_map.keys():
+                    if skill in line.lower() and skill not in skills:
+                        skills.append(skill)
+                        print(f"Found skill in bullet: {skill}")
+        
+        # Remove duplicates and return
+        skills = list(set(skills))
+        print(f"Total skills detected: {len(skills)} - {skills}")
+        return skills if skills else []
+
     def calculate_resume_quality_score(self, text, skills, education, experience, projects):
         """Calculate resume quality score based on various factors"""
         score = 0
@@ -324,6 +559,7 @@ class ResumeAnalyzer:
         experience = self.extract_experience(text)
         projects = self.extract_projects(text)
         skills = self.extract_skills(text)
+        certifications = self.extract_certifications(text)
         
         # Calculate quality score
         quality_score = self.calculate_resume_quality_score(text, skills, education, experience, projects)
@@ -359,6 +595,7 @@ class ResumeAnalyzer:
             'experience': experience,
             'projects': projects,
             'skills': skills,
+            'certifications': certifications,
             'quality_score': quality_score,
             'primary_career': primary_career,
             'confidence': confidence,
@@ -370,4 +607,8 @@ class ResumeAnalyzer:
 def analyze_resume_text(text):
     """Analyze resume text and return results"""
     analyzer = ResumeAnalyzer()
+    return analyzer.analyze_resume(text)
+    return analyzer.analyze_resume(text)
+    analyzer = ResumeAnalyzer()
+    return analyzer.analyze_resume(text)
     return analyzer.analyze_resume(text)

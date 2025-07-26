@@ -255,13 +255,24 @@ def handle_resume_upload():
     
     # Get skills from enhanced analyzer
     skills_found = analysis_result.get("skills", [])
-    if skills_found == ["Not detected"]:
-        skills_found = []
+    print(f"Skills from analyzer: {skills_found}")  # Debug
     
-    # Get other extracted information
+    # If no skills detected, try basic keyword search
+    if not skills_found:
+        skills_found = basic_skill_detection(extracted_text)
+        print(f"Skills from basic detection: {skills_found}")  # Debug
+    
+    # Get other extracted information with better formatting
     education = analysis_result.get("education", ["Not detected"])
     experience = analysis_result.get("experience", ["Not detected"])
     projects = analysis_result.get("projects", ["Not detected"])
+    certifications = analysis_result.get("certifications", ["Not detected"])
+    
+    # Format education for display
+    education_display = format_list_for_display(education)
+    experience_display = format_list_for_display(experience)
+    projects_display = format_list_for_display(projects)
+    certifications_display = format_list_for_display(certifications)
     
     # Quality checking with proper error handling
     try:
@@ -278,8 +289,8 @@ def handle_resume_upload():
         resume_score = 70
         quality_tips = ["Resume analysis completed"]
 
-    # Career prediction
-    skills_text = ', '.join(skills_found)
+    # Career prediction - handle empty skills
+    skills_text = ', '.join(skills_found) if skills_found else 'programming, software development'
     predictions = predict_career("", skills_text)
 
     top_3_careers = []
@@ -315,17 +326,50 @@ def handle_resume_upload():
                           mode="resume",
                           name=name,
                           contact=contact_info,
-                          skills=skills_text,
-                          education=education,
-                          experience=experience,
-                          projects=projects,
-                          resume_score=resume_score,
-                          quality_feedback=quality_tips,
-                          predicted_salary=predicted_salary,
-                          resources=resources,
-                          top_3_careers=top_3_careers,
+                          education=education_display,
+                          experience=experience_display,
+                          projects=projects_display,
+                          summary="Resume analysis completed",
+                          technical_skills=skills_text,
+                          certificates=certifications_display,
+                          predicted_career=create_career_dict(predictions),
                           quality_score=analysis_result.get("quality_score", resume_score),
-                          skill_gaps=analysis_result.get("skill_gaps", []))
+                          skill_gaps=analysis_result.get("skill_gaps", []),
+                          improvements=quality_tips,
+                          predicted_salary=predicted_salary)
+
+def format_list_for_display(data_list):
+    """Format list data for better display in template - handle structured data"""
+    if not data_list:
+        return "Not detected"
+    
+    # Check if it's a list of dictionaries (structured format)
+    if isinstance(data_list, list) and len(data_list) > 0:
+        if isinstance(data_list[0], dict):
+            return data_list  # Return as-is for template to handle
+        elif data_list == ["Not detected"]:
+            return "Not detected"
+        elif len(data_list) == 1:
+            return data_list[0]
+        else:
+            return "\n".join([f"• {item}" for item in data_list])
+    
+    return str(data_list)
+
+def create_career_dict(predictions):
+    """Create a properly formatted career dictionary for the template"""
+    if not predictions:
+        return {
+            'predicted_career': 'Software Developer',
+            'confidence': 70.0,
+            'top_careers': [('Software Developer', 70.0)]
+        }
+    
+    return {
+        'predicted_career': predictions[0][0],
+        'confidence': predictions[0][1],
+        'top_careers': predictions
+    }
 
 def extract_name_from_text(text):
     """Extract name from resume text"""
@@ -362,6 +406,24 @@ def extract_contact_info(text):
             contact_parts.append(phones[0])
     
     return ' | '.join(contact_parts) if contact_parts else "Contact information not detected"
+
+def basic_skill_detection(text):
+    """Fallback skill detection using common programming keywords"""
+    text_lower = text.lower()
+    common_skills = [
+        'python', 'java', 'javascript', 'react', 'angular', 'vue', 'nodejs', 'html', 'css',
+        'sql', 'mongodb', 'postgresql', 'git', 'docker', 'kubernetes', 'aws', 'azure',
+        'machine learning', 'data science', 'android', 'ios', 'flutter', 'swift', 'kotlin',
+        'c++', 'c#', 'php', 'ruby', 'go', 'rust', 'typescript', 'bootstrap', 'tailwind',
+        'express', 'django', 'flask', 'spring', 'laravel', 'rails', 'tensorflow', 'pytorch'
+    ]
+    
+    detected_skills = []
+    for skill in common_skills:
+        if skill in text_lower:
+            detected_skills.append(skill)
+    
+    return detected_skills
 
 # ===== Run =====
 if __name__ == '__main__':
