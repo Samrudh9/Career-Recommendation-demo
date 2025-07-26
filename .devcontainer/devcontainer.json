@@ -1,12 +1,30 @@
 {
   "name": "Career Recommendation App",
   "image": "mcr.microsoft.com/devcontainers/python:3.10",
-  "postCreateCommand": "pip install numpy pandas scikit-learn flask spacy pdfplumber==0.10.2 python-dotenv==1.0.0 && python -m spacy download en_core_web_sm",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-toolsai.jupyter",
+        "ms-azuretools.vscode-docker"
+      ]
+    }
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/python-poetry:1": {}
+  },
+  "postCreateCommand": "bash .devcontainer/setup.sh",
   "forwardPorts": [5000],
   "portsAttributes": {
     "5000": {
-      "label": "Application",
+      "label": "Career App Preview",
       "onAutoForward": "openPreview"
     }
+  },
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/workspace,type=bind"
+  ],
+  "remoteEnv": {
+    "PYTHONUNBUFFERED": "1"
   }
 }

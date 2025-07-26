@@ -1,7 +1,9 @@
 flask
-python-docx
-scikit-learn
-pandas
-spacy
 numpy
+pandas
+scikit-learn
+spacy
+pdfplumber==0.10.2
+python-dotenv==1.0.0
+
 werkzeug
