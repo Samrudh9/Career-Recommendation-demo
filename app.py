@@ -3,31 +3,64 @@ import sys
 import pickle
 import random
 import tempfile
-import html
-from collections.abc import Sequence
-from flask import Flask, request, jsonify, render_template, redirect, url_for, flash
-from markupsafe import Markup
-from analyzer.resume_analyzer import analyze_resume
-from tempfile import TemporaryFile
+import uuid
+from flask import Flask, request, render_template
 from werkzeug.utils import secure_filename
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
-from analyzer.resume_parser import extract_text_from_file
-from analyzer.resume_analyzer import analyze_resume
+from analyzer.resume_parser import extract_text_from_pdf
+from resume_analyzer import ResumeAnalyzer  # Use the enhanced analyzer
 from analyzer.quality_checker import check_resume_quality
 from analyzer.salary_estimator import salary_est
+
+# Try to import docx support
+try:
+    from docx import Document
+    DOCX_SUPPORT = True
+except ImportError:
+    DOCX_SUPPORT = False
+    print("Warning: python-docx not installed, DOCX extraction will not work.")
 
 app = Flask(__name__)
 
 # ===== Configuration =====
 UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'docx'}  # Removed PDF support for now
+# Only include DOCX if supported
+ALLOWED_EXTENSIONS = {'pdf', 'docx'} if DOCX_SUPPORT else {'pdf'}
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
+# Initialize the enhanced resume analyzer
+resume_analyzer = ResumeAnalyzer()
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def extract_text_from_docx(filepath):
+    """Extract text from DOCX file"""
+    if not DOCX_SUPPORT:
+        return "ERROR: DOCX support not available. Please install python-docx."
+    
+    try:
+        doc = Document(filepath)
+        text = []
+        for paragraph in doc.paragraphs:
+            text.append(paragraph.text)
+        return '\n'.join(text)
+    except Exception as e:
+        return f"ERROR: Failed to extract text from DOCX: {str(e)}"
+
+def extract_text_from_file(filepath, filename):
+    """Extract text from uploaded file based on extension"""
+    file_ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+    
+    if file_ext == 'pdf':
+        return extract_text_from_pdf(filepath)
+    elif file_ext == 'docx':
+        return extract_text_from_docx(filepath)
+    else:
+        return f"ERROR: Unsupported file format: {file_ext}"
 
 # ===== Load Trained Model =====
 def load_model():
@@ -89,61 +122,178 @@ def predict_career(interests, skills):
 
     return sorted(hybrid_scores, key=lambda x: x[1], reverse=True)[:3]
 
-# ===== Resume Upload Page =====
-@app.route('/resume', methods=['POST'])
-def handle_resume_upload():
-    uploaded = request.files.get('resume')
-    if not uploaded or uploaded.filename == '':
-        return "❌ No resume uploaded", 400
+def recommend_resources(career):
+    """Simple resource recommender function"""
+    resources = {
+        "data scientist": [
+            "Coursera: Data Science Specialization",
+            "Kaggle Learn: Python and Machine Learning",
+            "edX: MIT Introduction to Computer Science"
+        ],
+        "mobile app developer": [
+            "Flutter Documentation",
+            "React Native Tutorial",
+            "Android Developer Guides"
+        ],
+        "frontend developer": [
+            "MDN Web Docs",
+            "freeCodeCamp: Responsive Web Design",
+            "JavaScript.info"
+        ],
+        "backend developer": [
+            "Node.js Documentation",
+            "Django Tutorial",
+            "REST API Best Practices"
+        ]
+    }
+    return resources.get(career.lower(), [
+        "General Programming Resources",
+        "LinkedIn Learning",
+        "Udemy Courses"
+    ])
 
-    tmp = TemporaryFile()
-    tmp.write(uploaded.read())
-    tmp.seek(0)
+# ===== Routes =====
+@app.route('/')
+def home():
+    return render_template('intro.html')
 
-    text = extract_text_from_file(tmp, uploaded.filename)
-    if isinstance(text, str) and text.startswith("ERROR:"):
-        return f"❌ {text[7:]}", 400
+@app.route('/form')
+def form():
+    return render_template('form.html')
 
-    result = analyze_resume(text)
-    contact = result.get('contact', {})
-    contact_display = f"{contact.get('email','')} | {contact.get('phone','')}"
+@app.route('/about')
+def about():
+    return render_template('about.html')
 
-    career_prediction = result['career']
-    if isinstance(career_prediction, dict):
-        if 'confidence' in career_prediction and hasattr(career_prediction['confidence'], 'item'):
-            career_prediction['confidence'] = float(career_prediction['confidence'])
+@app.route('/submit', methods=['POST'])
+def submit():
+    name = request.form['name']
+    interests = request.form['interest']
+    skills = request.form['skills']
+    qualification = request.form['qualification']
+    career_pref = request.form.get('career_pref', '').strip()
 
-        if 'top_careers' in career_prediction:
-            top_careers = []
-            for career, conf in career_prediction['top_careers']:
-                if hasattr(conf, 'item'):
-                    conf = float(conf)
-                top_careers.append((career, conf))
-            career_prediction['top_careers'] = top_careers
+    predictions = predict_career(interests, skills)
+    description_dict = model_package.get('descriptions', {})
 
-    salary, _ = salary_est.estimate(
-        skills=', '.join(result['skills']),
-        career=result['career']['top_careers'][0][0] if result['career']['top_careers'] else None,
-        qualification=result.get('education', 'Bachelors')
-    )
+    top_3_careers = []
+    for career, confidence in predictions:
+        description = description_dict.get(career) or \
+                      description_dict.get(career.lower()) or \
+                      "Description not available for this career."
+        top_3_careers.append({
+            'career': career,
+            'confidence': confidence,
+            'description': description
+        })
+
+    interests_list = [x.strip() for x in interests.split(',') if x.strip()]
+    skills_list = [x.strip() for x in skills.split(',') if x.strip()]
 
     return render_template('result.html',
-        mode="resume",
-        name=result['name'],
-        contact=contact_display,
-        education=result['education'],
-        experience=result['experience'],
-        summary=result['summary'],
-        technical_skills=', '.join(result['skills']),
-        predicted_career=career_prediction,
-        quality_score=result['quality_score'],
-        skill_gaps=result['skill_gaps'],
-        improvements=result['improvements'],
-        certificates=result['certificates'],
-        projects=result['projects'],
-        predicted_salary=f"₹{salary:,}/year"
+                           mode="manual",
+                           name=name,
+                           interests=', '.join(interests_list),
+                           skills=', '.join(skills_list),
+                           qualification=qualification,
+                           career_pref=career_pref,
+                           top_3_careers=top_3_careers)
+
+# ===== Resume Upload Page =====
+@app.route('/upload')
+def upload():
+    return render_template('upload_form.html')
+
+@app.route('/resume', methods=['POST'])
+def handle_resume_upload():
+    resume = request.files['resume']
+
+    if not resume or resume.filename == '':
+        return "❌ No resume uploaded", 400
+    
+    if not allowed_file(resume.filename):
+        supported_formats = ', '.join(ALLOWED_EXTENSIONS).upper()
+        return f"❌ Unsupported file format. Please upload {supported_formats} files only.", 400
+     
+    # Generate unique filename with correct extension
+    file_ext = resume.filename.rsplit('.', 1)[1].lower()
+    unique_filename = f"{uuid.uuid4()}.{file_ext}"
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+    resume.save(filepath)
+
+    # Extract text from resume based on file type
+    extracted_text = extract_text_from_file(filepath, resume.filename)
+    
+    # Clean up uploaded file
+    try:
+        os.remove(filepath)
+    except:
+        pass  # Ignore cleanup errors
+    
+    # Check for extraction errors
+    if isinstance(extracted_text, str) and extracted_text.startswith("ERROR:"):
+        return f"❌ {extracted_text[7:]}", 400
+    
+    # Use enhanced resume analyzer
+    analysis_result = resume_analyzer.analyze_resume(extracted_text)
+    
+    # Get skills from enhanced analyzer
+    skills_found = analysis_result.get("skills", [])
+    if skills_found == ["Not detected"]:
+        skills_found = []
+    
+    # Get other extracted information
+    education = analysis_result.get("education", ["Not detected"])
+    experience = analysis_result.get("experience", ["Not detected"])
+    projects = analysis_result.get("projects", ["Not detected"])
+    
+    # Quality checking
+    quality_report = check_resume_quality(extracted_text)    
+    resume_score = quality_report["score"]
+    quality_tips = quality_report["tips"]
+
+    # Career prediction
+    skills_text = ', '.join(skills_found)
+    predictions = predict_career("", skills_text)
+
+    top_3_careers = []
+    description_dict = model_package.get('descriptions', {}) if model_package else {}
+    for career, confidence in predictions:
+        description = description_dict.get(career) or \
+                      description_dict.get(career.lower()) or \
+                      "Description not available for this career."
+        top_3_careers.append({
+            'career': career,
+            'confidence': confidence,
+            'description': description
+        })
+
+    # Salary estimation
+    salary_value, _ = salary_est.estimate(
+        skills=skills_text,
+        career=predictions[0][0] if predictions else "Software Developer",
+        qualification=education[0] if education != ["Not detected"] else "Unknown"
     )
+    predicted_salary = f"₹{salary_value:,}/year"
+
+    # Resource recommendations
+    primary_career = predictions[0][0] if predictions else "software developer"
+    resources = recommend_resources(primary_career)
+
+    return render_template('result.html',
+                          mode="resume",
+                          skills=skills_text,
+                          education=education,
+                          experience=experience,
+                          projects=projects,
+                          resume_score=resume_score,
+                          quality_feedback=quality_tips,
+                          predicted_salary=predicted_salary,
+                          resources=resources,
+                          top_3_careers=top_3_careers,
+                          quality_score=analysis_result.get("quality_score", resume_score),
+                          skill_gaps=analysis_result.get("skill_gaps", []))
 
 # ===== Run =====
 if __name__ == '__main__':
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=True)
