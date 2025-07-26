@@ -112,75 +112,112 @@ class ResumeAnalyzer:
         return '\n'.join(content)
     
     def extract_education(self, text):
-        """Extract education information from resume text"""
+        """Extract education information from resume text with proper formatting"""
         education_info = []
         
         # First try to extract from education section
         education_section = self.extract_section_content(text, self.education_headers)
         search_text = education_section if education_section else text
         
-        # Apply education patterns
-        for pattern in self.education_patterns:
-            matches = re.findall(pattern, search_text, re.IGNORECASE)
-            education_info.extend(matches)
-        
-        # Look for degree with institution patterns
-        degree_institution_patterns = [
-            r'(b\.?tech|m\.?tech|mba|phd|b\.?sc|m\.?sc|be|me|bca|mca)\s+(?:in|from)\s+([^,.\n]+)',
-            r'(bachelor|master|doctor)\s+of\s+([^,.\n]+)',
-            r'(diploma|certificate)\s+in\s+([^,.\n]+)'
+        # Enhanced patterns for degree with institution and dates
+        education_patterns = [
+            # Pattern: Degree from Institution, Location (Year - Year)
+            r'(b\.?tech|m\.?tech|mba|phd|b\.?sc|m\.?sc|be|me|bca|mca|diploma)\s+(?:in\s+)?([^,\n]+)[\s\n]*([^,\n]+(?:institute|university|college|school)[^,\n]*)[,\s]*([^,\n]*)\s*(\d{4}|\d{4}\s*-\s*\d{4}|\d{4}\s*-\s*present)',
+            # Pattern: Institution - Degree (Year)
+            r'([^,\n]+(?:institute|university|college|school)[^,\n]*)[,\s]*([^,\n]*)\s*(b\.?tech|m\.?tech|mba|phd|b\.?sc|m\.?sc|be|me|bca|mca)\s*(?:in\s+)?([^,\n]+)\s*(\d{4}|\d{4}\s*-\s*\d{4})',
+            # Pattern: Degree in Branch from Institution
+            r'(b\.?tech|m\.?tech|mba|phd|b\.?sc|m\.?sc|be|me|bca|mca)\s+(?:in\s+)?(computer science|engineering|business|science|commerce|arts|[^,\n]+)\s+(?:from\s+)?([^,\n]+(?:institute|university|college|school)[^,\n]*)'
         ]
         
-        for pattern in degree_institution_patterns:
+        for pattern in education_patterns:
             matches = re.findall(pattern, search_text, re.IGNORECASE)
             for match in matches:
-                if isinstance(match, tuple):
-                    education_info.append(' '.join(match))
-                else:
-                    education_info.append(match)
+                if len(match) >= 3:
+                    education_info.append(self.format_education_entry(match))
+        
+        # If no structured data found, try simpler extraction
+        if not education_info:
+            simple_patterns = [
+                r'(b\.?tech|m\.?tech|mba|phd|b\.?sc|m\.?sc|be|me|bca|mca)\s+([^.\n]+)',
+                r'([^.\n]+(?:institute|university|college|school)[^.\n]*)',
+                r'(bachelor|master|doctor)\s+of\s+([^.\n]+)'
+            ]
+            
+            for pattern in simple_patterns:
+                matches = re.findall(pattern, search_text, re.IGNORECASE)
+                for match in matches:
+                    if isinstance(match, tuple):
+                        education_info.append(' '.join(match).strip())
+                    else:
+                        education_info.append(match.strip())
         
         # Remove duplicates and clean up
         education_info = list(set([edu.strip() for edu in education_info if edu.strip()]))
         
         return education_info if education_info else ["Not detected"]
     
+    def format_education_entry(self, match_tuple):
+        """Format education entry into a readable string"""
+        try:
+            if len(match_tuple) == 5:
+                degree, branch, institution, location, year = match_tuple
+                return f"{degree.upper()} in {branch.title()} from {institution.title()}, {location.strip()} ({year})"
+            elif len(match_tuple) == 4:
+                degree, branch, institution, year = match_tuple
+                return f"{degree.upper()} in {branch.title()} from {institution.title()} ({year})"
+            elif len(match_tuple) == 3:
+                degree, branch, institution = match_tuple
+                return f"{degree.upper()} in {branch.title()} from {institution.title()}"
+            else:
+                return ' '.join(match_tuple)
+        except:
+            return ' '.join(match_tuple)
+    
     def extract_experience(self, text):
-        """Extract work experience information from resume text"""
+        """Extract work experience information with better formatting"""
         experience_info = []
         
         # First try to extract from experience section
         experience_section = self.extract_section_content(text, self.experience_headers)
         search_text = experience_section if experience_section else text
         
-        # Apply experience patterns
-        for pattern in self.experience_patterns:
-            matches = re.findall(pattern, search_text, re.IGNORECASE)
-            if matches:
-                for match in matches:
-                    if isinstance(match, tuple):
-                        experience_info.extend([m for m in match if m])
-                    else:
-                        experience_info.append(match)
-        
-        # Look for job titles and companies
-        job_company_patterns = [
-            r'(?:software\s+)?(?:developer|engineer|programmer|analyst|manager|lead|intern)\s+at\s+([^,.\n]+)',
-            r'(?:working|worked)\s+as\s+([^,.\n]+)\s+at\s+([^,.\n]+)',
-            r'(\d+)\+?\s+(?:years?|yrs?)\s+(?:of\s+)?(?:experience|exp)(?:\s+in\s+([^,.\n]+))?'
+        # Enhanced experience patterns
+        experience_patterns = [
+            # Pattern: Position at Company (Duration)
+            r'(?:worked as|position:|role:)?\s*([^,\n]+(?:developer|engineer|intern|analyst|manager|lead|executive|specialist|coordinator)[^,\n]*)\s+(?:at|with|@)\s+([^,\n]+)\s*(?:from|since)?\s*(\d{4}|\w+\s+\d{4})?\s*(?:to|-)\s*(\d{4}|\w+\s+\d{4}|present)?',
+            # Pattern: Company - Position (Duration)
+            r'([^,\n]+(?:technologies|solutions|systems|pvt|ltd|inc|corp|company)[^,\n]*)\s*[-–]\s*([^,\n]+(?:developer|engineer|intern|analyst|manager)[^,\n]*)\s*(\d{4}|\w+\s+\d{4})?\s*(?:to|-)\s*(\d{4}|\w+\s+\d{4}|present)?',
+            # Pattern: Years of experience
+            r'(\d+)\+?\s*(?:years?|yrs?)\s*(?:of\s+)?(?:experience|exp)(?:\s+(?:in|as|with)\s+([^,.\n]+))?'
         ]
         
-        for pattern in job_company_patterns:
+        for pattern in experience_patterns:
             matches = re.findall(pattern, search_text, re.IGNORECASE)
             for match in matches:
-                if isinstance(match, tuple):
-                    experience_info.extend([m.strip() for m in match if m.strip()])
-                else:
-                    experience_info.append(match.strip())
+                formatted_exp = self.format_experience_entry(match)
+                if formatted_exp:
+                    experience_info.append(formatted_exp)
         
         # Clean up and remove duplicates
         experience_info = list(set([exp.strip() for exp in experience_info if exp.strip()]))
         
         return experience_info if experience_info else ["Not detected"]
+    
+    def format_experience_entry(self, match_tuple):
+        """Format experience entry into a readable string"""
+        try:
+            match_tuple = [item.strip() for item in match_tuple if item.strip()]
+            if len(match_tuple) >= 2:
+                if 'years' in match_tuple[0].lower() or 'yrs' in match_tuple[0].lower():
+                    return f"{match_tuple[0]} of experience in {match_tuple[1] if len(match_tuple) > 1 else 'various technologies'}"
+                else:
+                    position = match_tuple[0] if 'developer' in match_tuple[0].lower() or 'engineer' in match_tuple[0].lower() else match_tuple[1]
+                    company = match_tuple[1] if position == match_tuple[0] else match_tuple[0]
+                    duration = f" ({match_tuple[2]} - {match_tuple[3]})" if len(match_tuple) >= 4 else ""
+                    return f"{position.title()} at {company.title()}{duration}"
+            return ' '.join(match_tuple)
+        except:
+            return ' '.join(match_tuple)
     
     def extract_projects(self, text):
         """Extract project information from resume text"""
