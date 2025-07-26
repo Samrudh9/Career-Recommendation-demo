@@ -263,6 +263,7 @@
                 <p>{{ education }}</p>
             {% else %}
                 {% for edu in education %}
+                    {% if edu.degree != 'Not detected' %}
                     <div class="education-entry">
                         <div class="education-header">
                             <h4>{{ edu.degree }}</h4>
@@ -279,6 +280,7 @@
                             {% endif %}
                         </div>
                     </div>
+                    {% endif %}
                 {% endfor %}
             {% endif %}
         {% else %}
@@ -293,20 +295,21 @@
                 <p>{{ experience }}</p>
             {% else %}
                 {% for exp in experience %}
+                    {% if exp.title != 'Not detected' %}
                     <div class="experience-entry">
                         <div class="experience-header">
                             {% if exp.title %}
                                 <h4>{{ exp.title }}</h4>
                             {% endif %}
                             {% if exp.company %}
-                                <h5>{{ exp.company }} {% if exp.type == 'work' %}· Internship{% endif %}</h5>
+                                <h5>{{ exp.company }}{% if 'intern' in exp.title.lower() %} · Internship{% endif %}</h5>
                             {% endif %}
                         </div>
                         <div class="experience-details">
                             {% if exp.duration %}
                                 <span class="duration">{{ exp.duration }}</span>
                             {% endif %}
-                            {% if exp.location %}
+                            {% if exp.location and exp.location != 'Remote' %}
                                 <span class="location">{{ exp.location }}</span>
                             {% endif %}
                         </div>
@@ -316,6 +319,7 @@
                             </div>
                         {% endif %}
                     </div>
+                    {% endif %}
                 {% endfor %}
             {% endif %}
         {% else %}

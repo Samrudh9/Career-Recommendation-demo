@@ -134,18 +134,24 @@ class ResumeAnalyzer:
         try:
             if len(match_tuple) == 5:
                 degree, branch, institution, location, year = match_tuple
+                # Clean up empty fields
+                location = location.strip() if location and location.strip() else ''
+                year = year.strip() if year and year.strip() else ''
+                
                 return {
-                    'degree': f"{degree.upper()} in {branch.title()}",
-                    'institution': institution.title(),
-                    'location': location.strip(),
+                    'degree': f"{degree.upper()} in {branch.title()}".strip(),
+                    'institution': institution.title().strip(),
+                    'location': location,
                     'duration': year,
                     'type': 'degree'
                 }
             elif len(match_tuple) == 4:
                 degree, branch, institution, year = match_tuple
+                year = year.strip() if year and year.strip() else ''
+                
                 return {
-                    'degree': f"{degree.upper()} in {branch.title()}",
-                    'institution': institution.title(),
+                    'degree': f"{degree.upper()} in {branch.title()}".strip(),
+                    'institution': institution.title().strip(),
                     'location': '',
                     'duration': year,
                     'type': 'degree'
@@ -153,28 +159,26 @@ class ResumeAnalyzer:
             elif len(match_tuple) == 3:
                 degree, branch, institution = match_tuple
                 return {
-                    'degree': f"{degree.upper()} in {branch.title()}",
-                    'institution': institution.title(),
+                    'degree': f"{degree.upper()} in {branch.title()}".strip(),
+                    'institution': institution.title().strip() if institution else '',
+                    'location': '',
+                    'duration': '',
+                    'type': 'degree'
+                }
+            elif len(match_tuple) == 2:
+                degree, branch = match_tuple
+                return {
+                    'degree': f"{degree.upper()} in {branch.title()}".strip(),
+                    'institution': '',
                     'location': '',
                     'duration': '',
                     'type': 'degree'
                 }
             else:
-                return {
-                    'degree': ' '.join(match_tuple),
-                    'institution': '',
-                    'location': '',
-                    'duration': '',
-                    'type': 'other'
-                }
-        except:
-            return {
-                'degree': ' '.join(match_tuple),
-                'institution': '',
-                'location': '',
-                'duration': '',
-                'type': 'other'
-            }
+                return None
+        except Exception as e:
+            print(f"Error formatting education entry: {e}")
+            return None
 
     def format_experience_entry(self, match_tuple):
         """Format experience entry into a LinkedIn-style structured string"""
@@ -239,6 +243,7 @@ class ResumeAnalyzer:
     def extract_education(self, text):
         """Extract education information with structured formatting"""
         education_info = []
+        seen_entries = set()  # Track duplicates
         
         # First try to extract from education section
         education_section = self.extract_section_content(text, self.education_headers)
@@ -246,26 +251,31 @@ class ResumeAnalyzer:
         
         # Enhanced patterns for degree with institution and dates
         education_patterns = [
-            # Pattern: Degree from Institution, Location (Year - Year)
-            r'(b\.?tech|m\.?tech|mba|phd|b\.?sc|m\.?sc|be|me|bca|mca|diploma)\s+(?:in\s+)?([^,\n]+)[\s\n]*([^,\n]+(?:institute|university|college|school)[^,\n]*)[,\s]*([^,\n]*)\s*(\d{4}|\d{4}\s*-\s*\d{4}|\d{4}\s*-\s*present)',
-            # Pattern: Institution - Degree (Year)
-            r'([^,\n]+(?:institute|university|college|school)[^,\n]*)[,\s]*([^,\n]*)\s*(b\.?tech|m\.?tech|mba|phd|b\.?sc|m\.?sc|be|me|bca|mca)\s*(?:in\s+)?([^,\n]+)\s*(\d{4}|\d{4}\s*-\s*\d{4})',
-            # Pattern: Degree in Branch from Institution
-            r'(b\.?tech|m\.?tech|mba|phd|b\.?sc|m\.?sc|be|me|bca|mca)\s+(?:in\s+)?(computer science|engineering|business|science|commerce|arts|[^,\n]+)\s+(?:from\s+)?([^,\n]+(?:institute|university|college|school)[^,\n]*)'
+            # Pattern: Degree in Branch from Institution, Year
+            r'(b\.?tech|m\.?tech|mba|phd|b\.?sc|m\.?sc|be|me|bca|mca|diploma)\s+(?:in\s+)?([^,\n]+?)[\s\n]*(?:from\s+)?([^,\n]+(?:institute|university|college|school)[^,\n]*?)[\s,]*([^,\n]*?)[\s,]*(\d{4}|\d{4}\s*-\s*\d{4}|\d{4}\s*-\s*present)?',
+            
+            # Pattern: Institution - Degree in Branch (Year)
+            r'([^,\n]+(?:institute|university|college|school)[^,\n]*?)[,\s]*([^,\n]*?)\s*(b\.?tech|m\.?tech|mba|phd|b\.?sc|m\.?sc|be|me|bca|mca)\s*(?:in\s+)?([^,\n]+?)\s*(\d{4}|\d{4}\s*-\s*\d{4})?',
+            
+            # Pattern: Simple degree in field
+            r'(b\.?tech|m\.?tech|mba|phd|b\.?sc|m\.?sc|be|me|bca|mca)\s+(?:in\s+)?(computer science|engineering|technology|science|commerce|arts|communication|[^,\n]+)',
         ]
         
         for pattern in education_patterns:
             matches = re.findall(pattern, search_text, re.IGNORECASE)
             for match in matches:
-                if len(match) >= 3:
+                if len(match) >= 2:
                     formatted_entry = self.format_education_entry(match)
                     if formatted_entry:
-                        education_info.append(formatted_entry)
+                        # Create a unique key to prevent duplicates
+                        unique_key = f"{formatted_entry['degree']}_{formatted_entry['institution']}"
+                        if unique_key not in seen_entries:
+                            seen_entries.add(unique_key)
+                            education_info.append(formatted_entry)
         
         # If no structured data found, try simpler extraction
         if not education_info:
             simple_patterns = [
-                r'(b\.?tech|m\.?tech|mba|phd|b\.?sc|m\.?sc|be|me|bca|mca)\s+([^.\n]+)',
                 r'([^.\n]+(?:institute|university|college|school)[^.\n]*)',
                 r'(bachelor|master|doctor)\s+of\s+([^.\n]+)'
             ]
@@ -274,31 +284,34 @@ class ResumeAnalyzer:
                 matches = re.findall(pattern, search_text, re.IGNORECASE)
                 for match in matches:
                     if isinstance(match, tuple):
-                        education_info.append({
-                            'degree': ' '.join(match).strip().title(),
-                            'institution': '',
-                            'location': '',
-                            'duration': '',
-                            'type': 'simple'
-                        })
+                        degree_text = ' '.join(match).strip().title()
                     else:
-                        education_info.append({
-                            'degree': match.strip().title(),
-                            'institution': '',
-                            'location': '',
-                            'duration': '',
-                            'type': 'simple'
-                        })
+                        degree_text = match.strip().title()
+                    
+                    if len(degree_text) > 10:  # Filter meaningful entries
+                        unique_key = degree_text
+                        if unique_key not in seen_entries:
+                            seen_entries.add(unique_key)
+                            education_info.append({
+                                'degree': degree_text,
+                                'institution': '',
+                                'location': '',
+                                'duration': '',
+                                'type': 'simple'
+                            })
         
         return education_info if education_info else [{"degree": "Not detected", "institution": "", "location": "", "duration": "", "type": "none"}]
 
     def extract_experience(self, text):
         """Extract experience information with structured formatting"""
         experience_info = []
+        seen_entries = set()  # Track duplicates
         
         # First try to extract from experience section
         experience_section = self.extract_section_content(text, self.experience_headers)
         search_text = experience_section if experience_section else text
+        
+        print(f"Experience section found: {experience_section[:200] if experience_section else 'None'}")
         
         # More specific patterns for actual resume content
         experience_patterns = [
@@ -307,6 +320,9 @@ class ResumeAnalyzer:
             
             # Pattern: Position at Company
             r'([^,\n]*(?:intern|developer|engineer|analyst|manager|lead|executive|specialist|coordinator|consultant|designer|administrator|trainee|associate)[^,\n]*)\s+(?:at|with|@|in)\s+([A-Z][^,\n]+)',
+            
+            # Pattern: Simple job titles
+            r'(?:^|\n)\s*([A-Z][^,\n]*(?:intern|developer|engineer|analyst|manager|lead|executive|specialist|coordinator|consultant|designer|administrator|trainee|associate)[^,\n]*)',
         ]
         
         for pattern in experience_patterns:
@@ -314,7 +330,11 @@ class ResumeAnalyzer:
             for match in matches:
                 formatted_exp = self.format_experience_entry(match)
                 if formatted_exp:
-                    experience_info.append(formatted_exp)
+                    # Create unique key to prevent duplicates
+                    unique_key = f"{formatted_exp['title']}_{formatted_exp['company']}"
+                    if unique_key not in seen_entries and len(formatted_exp['title']) > 3:
+                        seen_entries.add(unique_key)
+                        experience_info.append(formatted_exp)
         
         return experience_info if experience_info else [{"title": "Not detected", "company": "", "duration": "", "location": "", "description": "", "type": "none"}]
 
@@ -607,8 +627,4 @@ class ResumeAnalyzer:
 def analyze_resume_text(text):
     """Analyze resume text and return results"""
     analyzer = ResumeAnalyzer()
-    return analyzer.analyze_resume(text)
-    return analyzer.analyze_resume(text)
-    analyzer = ResumeAnalyzer()
-    return analyzer.analyze_resume(text)
     return analyzer.analyze_resume(text)
