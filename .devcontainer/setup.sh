@@ -9,9 +9,9 @@ apt-get update && apt-get install -y libpoppler-cpp-dev
 
 # Python dependencies
 pip install --upgrade pip
-pip install -r requirements.txt || {
+pip install -r REQUIREMENTS.txt || {
     echo "Fallback: manual pip install"
-    pip install numpy pandas scikit-learn flask spacy pdfplumber==0.10.2 python-dotenv
+    pip install numpy pandas scikit-learn flask spacy pdfplumber==0.10.2 python-dotenv werkzeug python-docx
 }
 
 # Language models
