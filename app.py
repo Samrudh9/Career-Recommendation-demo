@@ -5,15 +5,38 @@ import random
 import tempfile
 import uuid
 import re
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, jsonify
 from werkzeug.utils import secure_filename
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 from analyzer.resume_parser import extract_text_from_pdf
-from resume_analyzer import ResumeAnalyzer  # Use the enhanced analyzer
+# Remove the problematic import and handle it conditionally
+try:
+    from analyzer.resume_analyzer import analyze_resume_for_app
+    ENHANCED_ANALYZER_SUPPORT = True
+except ImportError as e:
+    print(f"Warning: Enhanced resume analyzer not available: {e}")
+    ENHANCED_ANALYZER_SUPPORT = False
+
+# Try to import the enhanced analyzer
+try:
+    from resume_analyzer import ResumeAnalyzer
+    RESUME_ANALYZER_SUPPORT = True
+except ImportError as e:
+    print(f"Warning: ResumeAnalyzer not available: {e}")
+    RESUME_ANALYZER_SUPPORT = False
+
 from analyzer.quality_checker import check_resume_quality
 from analyzer.salary_estimator import salary_est
+
+# Import the career roadmap functionality
+try:
+    from analyzer.career_roadmap import skill_gap_analyzer, roadmap_generator
+    ROADMAP_SUPPORT = True
+except ImportError:
+    ROADMAP_SUPPORT = False
+    print("Warning: Career roadmap functionality not available.")
 
 # Try to import docx support
 try:
@@ -32,8 +55,16 @@ ALLOWED_EXTENSIONS = {'pdf', 'docx'} if DOCX_SUPPORT else {'pdf'}
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Initialize the enhanced resume analyzer
-resume_analyzer = ResumeAnalyzer()
+# Initialize the enhanced resume analyzer if available
+if RESUME_ANALYZER_SUPPORT:
+    try:
+        resume_analyzer = ResumeAnalyzer()
+    except Exception as e:
+        print(f"Warning: Failed to initialize ResumeAnalyzer: {e}")
+        resume_analyzer = None
+        RESUME_ANALYZER_SUPPORT = False
+else:
+    resume_analyzer = None
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -250,10 +281,17 @@ def handle_resume_upload():
     # Extract contact information
     contact_info = extract_contact_info(extracted_text)
     
-    # Use enhanced resume analyzer
-    analysis_result = resume_analyzer.analyze_resume(extracted_text)
+    # Use enhanced resume analyzer if available, otherwise use basic analysis
+    if RESUME_ANALYZER_SUPPORT and resume_analyzer:
+        try:
+            analysis_result = resume_analyzer.analyze_resume(extracted_text)
+        except Exception as e:
+            print(f"Enhanced analyzer failed, using basic analysis: {e}")
+            analysis_result = basic_resume_analysis(extracted_text)
+    else:
+        analysis_result = basic_resume_analysis(extracted_text)
     
-    # Get skills from enhanced analyzer
+    # Get skills from analyzer
     skills_found = analysis_result.get("skills", [])
     print(f"Skills from analyzer: {skills_found}")  # Debug
     
@@ -305,6 +343,15 @@ def handle_resume_upload():
             'description': description
         })
 
+    # Generate skill gap analysis if roadmap support is available
+    skill_gap_data = None
+    if ROADMAP_SUPPORT and predictions:
+        primary_career = predictions[0][0]
+        try:
+            skill_gap_data = skill_gap_analyzer.analyze_skill_gap(skills_found, primary_career)
+        except Exception as e:
+            print(f"Skill gap analysis error: {e}")
+
     # Salary estimation with error handling
     try:
         salary_value, _ = salary_est.estimate(
@@ -334,9 +381,57 @@ def handle_resume_upload():
                           certificates=certifications_display,
                           predicted_career=create_career_dict(predictions),
                           quality_score=analysis_result.get("quality_score", resume_score),
-                          skill_gaps=analysis_result.get("skill_gaps", []),
+                          skill_gaps=skill_gap_data.get("skills_analysis", {}).get("missing_required", []) if skill_gap_data else [],
                           improvements=quality_tips,
-                          predicted_salary=predicted_salary)
+                          predicted_salary=predicted_salary,
+                          roadmap_available=ROADMAP_SUPPORT)
+
+@app.route('/roadmap', methods=['GET', 'POST'])
+def generate_roadmap():
+    """Generate personalized career roadmap"""
+    if not ROADMAP_SUPPORT:
+        return "Career roadmap feature is not available. Please check your installation.", 500
+    
+    if request.method == 'POST':
+        # Get form data
+        career = request.form.get('career', '').strip()
+        skills_input = request.form.get('skills', '').strip()
+        time_months = int(request.form.get('time_months', 6))
+        learning_style = request.form.get('learning_style', 'mixed')
+        qualification = request.form.get('qualification', 'bachelors')
+        
+        # Parse skills
+        user_skills = [skill.strip() for skill in skills_input.split(',') if skill.strip()]
+        
+        # Generate roadmap
+        roadmap_data = roadmap_generator.generate_personalized_roadmap(
+            user_skills=user_skills,
+            target_career=career,
+            available_time_months=time_months,
+            learning_style=learning_style,
+            qualification=qualification
+        )
+        
+        return render_template('roadmap_result.html', roadmap=roadmap_data)
+    
+    # Available careers for dropdown
+    available_careers = list(skill_gap_analyzer.career_skills_db.keys())
+    return render_template('roadmap_form.html', careers=available_careers)
+
+@app.route('/skill-gap-analysis', methods=['POST'])
+def analyze_skill_gap():
+    """API endpoint for skill gap analysis"""
+    if not ROADMAP_SUPPORT:
+        return jsonify({"error": "Career roadmap feature not available"}), 500
+        
+    data = request.get_json()
+    
+    user_skills = data.get('skills', [])
+    target_career = data.get('career', '')
+    
+    analysis = skill_gap_analyzer.analyze_skill_gap(user_skills, target_career)
+    
+    return jsonify(analysis)
 
 def format_list_for_display(data_list):
     """Format list data for better display in template - handle structured data"""
@@ -424,6 +519,66 @@ def basic_skill_detection(text):
             detected_skills.append(skill)
     
     return detected_skills
+
+def basic_resume_analysis(text):
+    """Fallback resume analysis when enhanced analyzer is not available"""
+    analysis = {
+        "skills": basic_skill_detection(text),
+        "education": extract_education_basic(text),
+        "experience": extract_experience_basic(text),
+        "projects": extract_projects_basic(text),
+        "certifications": extract_certifications_basic(text),
+        "quality_score": 70  # Default score
+    }
+    return analysis
+
+def extract_education_basic(text):
+    """Basic education extraction"""
+    education_keywords = ['bachelor', 'master', 'phd', 'degree', 'university', 'college', 'graduate']
+    lines = text.lower().split('\n')
+    education = []
+    
+    for line in lines:
+        if any(keyword in line for keyword in education_keywords):
+            education.append(line.strip())
+    
+    return education if education else ["Not detected"]
+
+def extract_experience_basic(text):
+    """Basic experience extraction"""
+    experience_keywords = ['experience', 'worked', 'employed', 'position', 'role', 'company']
+    lines = text.lower().split('\n')
+    experience = []
+    
+    for line in lines:
+        if any(keyword in line for keyword in experience_keywords):
+            experience.append(line.strip())
+    
+    return experience if experience else ["Not detected"]
+
+def extract_projects_basic(text):
+    """Basic project extraction"""
+    project_keywords = ['project', 'developed', 'built', 'created', 'implemented']
+    lines = text.lower().split('\n')
+    projects = []
+    
+    for line in lines:
+        if any(keyword in line for keyword in project_keywords):
+            projects.append(line.strip())
+    
+    return projects if projects else ["Not detected"]
+
+def extract_certifications_basic(text):
+    """Basic certification extraction"""
+    cert_keywords = ['certified', 'certification', 'certificate', 'credential']
+    lines = text.lower().split('\n')
+    certifications = []
+    
+    for line in lines:
+        if any(keyword in line for keyword in cert_keywords):
+            certifications.append(line.strip())
+    
+    return certifications if certifications else ["Not detected"]
 
 # ===== Run =====
 if __name__ == '__main__':

@@ -347,6 +347,38 @@
     </div>
 
     <div class="section">
+        <h2>🧩 Skill Gaps</h2>
+        {% if skill_gaps and skill_gaps|length > 0 %}
+            <p>Skills you may need to develop for your target career:</p>
+            <div class="skills-container">
+                {% for gap in skill_gaps %}
+                    <span class="skill-gap">{{ gap }}</span>
+                {% endfor %}
+            </div>
+            <div class="suggestions">
+                <p><strong>Recommendations:</strong></p>
+                <ul>
+                    <li>Focus on learning the missing skills highlighted above</li>
+                    <li>Consider taking online courses or certifications in these areas</li>
+                    <li>Practice these skills through personal projects</li>
+                    <li>Look for internships or entry-level positions that provide training</li>
+                </ul>
+            </div>
+        {% else %}
+            <p style="color: #00ffaa;">Great! Your skills align well with your target career path.</p>
+            <div class="suggestions">
+                <p><strong>Continue to grow:</strong></p>
+                <ul>
+                    <li>Stay updated with latest industry trends</li>
+                    <li>Deepen your expertise in current skills</li>
+                    <li>Consider advanced certifications in your field</li>
+                    <li>Build a portfolio showcasing your skills</li>
+                </ul>
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="section">
         <h2>💡 Career Recommendation</h2>
         {% if predicted_career is mapping %}
             <p><span class="highlight">Suggested Career:</span> {{ predicted_career.predicted_career }}</p>

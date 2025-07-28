@@ -5,12 +5,15 @@
 			"args": [
 				"app.py"
 			],
-			"command": "venv\\Scripts\\python.exe",
+			"command": "${workspaceFolder}\\venv\\Scripts\\python.exe",
 			"group": "build",
 			"isBackground": false,
 			"label": "Run Career Recommendation App",
 			"problemMatcher": [],
-			"type": "shell"
+			"type": "shell",
+			"options": {
+				"cwd": "${workspaceFolder}"
+			}
 		}
 	]
 }
