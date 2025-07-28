@@ -5,7 +5,7 @@
 			"args": [
 				"app.py"
 			],
-			"command": "python",
+			"command": "venv\\Scripts\\python.exe",
 			"group": "build",
 			"isBackground": false,
 			"label": "Run Career Recommendation App",
